@@ -27,3 +27,5 @@ Status / Date
 ## Alternatives
 ## Consequences
 ```
+
+- [0008：比較ツールとローカルGit管理](0008-comparison-and-local-git.md)

@@ -34,6 +34,8 @@ import SwiftUI
             let model = LineToolModel(); controller = ToolWindow(title: tool.title, view: LineToolsView(model: model)); controller.cleanup = { model.stop() }
         case .stringReplacer:
             let model = ReplacerModel(); controller = ToolWindow(title: tool.title, view: ReplacerView(model: model)); controller.cleanup = { model.stop() }
+        case .comparison:
+            let model = ComparisonModel(); controller = ToolWindow(title: tool.title, view: ComparisonView(model: model)); controller.cleanup = { model.stop() }
         case .systemMonitor: return
         }
         controller.closed = { [weak self] in self?.windows[tool] = nil }

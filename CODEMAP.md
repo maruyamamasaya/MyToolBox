@@ -1,11 +1,11 @@
 # Code Map
 
-ローカルsemantic index / IDE symbol searchは未提供。CODEMAP→rgのexact検索→実ファイル→references/tests/configurationの順に調べる。Git未初期化なのでgit grepは使えない。
+ローカルsemantic index / IDE symbol searchは未提供。CODEMAP→rgのexact検索→実ファイル→references/tests/configurationの順に調べる。ローカルGit管理済み。追跡ファイルにはgit grepも使える。
 
 | Feature | Primary paths | Search keywords | Key entry points | Related tests |
 | --- | --- | --- | --- | --- |
 | ツール一覧 | Sources/MyToolBox/App/ToolCatalog.swift、Sources/MyToolBox/UI/ToolLauncher.swift | ToolID、openTool | AppDelegate.showTools | 描画・実機導線確認 |
-| ローカル10ツール | Sources/MyToolBox/Tools、Sources/MonitorKit/Tools | ToolWindows、ToolPage、BusinessDays、CSVDocument、CSVModel、SpeakerModel、MicrophoneModel、TextTransformModel、ClipboardFormatterModel、SequentialText、ClipboardTable、TextCleaner | ToolWindows.show | TextToolsTests.swift、LocalToolsTests.swift、tools/RenderLocalTools.swift |
+| ローカル11ツール | Sources/MyToolBox/Tools、Sources/MonitorKit/Tools | ToolWindows、ToolPage、BusinessDays、CSVDocument、CSVModel、SpeakerModel、MicrophoneModel、TextTransformModel、ClipboardFormatterModel、SequentialText、ClipboardTable、TextCleaner | ToolWindows.show | TextToolsTests.swift、LocalToolsTests.swift、tools/RenderLocalTools.swift |
 | 行・置換・リスト | Sources/MonitorKit/Tools/LineTools.swift、StringReplacer.swift、ListConverter.swift、Sources/MyToolBox/Tools/LineToolViews.swift、ReplacerView.swift | LineTools、ReplacerModel、ClipboardWorkspaceView、TextProcessor | ToolWindows.show | LineUtilityTests.swift、RegexBudgetProbe.swift |
 | 起動・メニューバー | Sources/MyToolBox/App/MyToolBoxApp.swift | NSStatusItem、NSPopover、togglePopover | AppDelegate | Xcode build、実機手順 |
 | UI取得ループ・sleep・login | Sources/MyToolBox/App/MonitorStore.swift | suspend、resume、setLogin | MonitorStore.start | 実機手順、reset単体 |
@@ -39,3 +39,5 @@ rg -n 'CounterRate|InterfaceRates|reset' Sources Tests
 rg -n 'MonitorEngine|sample\(' Sources Tests
 rg --files -g AGENTS.md -g '*.swift' -g '*.py'
 ```
+
+比較：`Sources/MonitorKit/Tools/Comparison.swift`（TextComparison/ListComparison）→ `Sources/MyToolBox/Tools/ComparisonView.swift`（ComparisonModel/ComparisonWorker）→ ToolWindows。`Tests/MonitorKitTests/ComparisonTests.swift`、`tools/RenderLocalTools.swift`。

@@ -31,6 +31,18 @@ class VerifyTests(unittest.TestCase):
             with (root / 'CURRENT.md').open('a') as out: out.write('\n' * 81)
             self.assertEqual(check(root, fast=True), [])
             self.assertTrue(any('exceeds 80' in e for e in check(root)))
+    def testGeneratedAppCanBeAbsentBeforeFirstBuild(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name); self.fixture(root); shutil.rmtree(root / 'build')
+            self.assertEqual(check(root, fast=True), [])
+            with (root / 'README.md').open('a') as out: out.write('\n[unknown](build/not-a-declared-artifact.txt)\n')
+            self.assertTrue(any('broken link' in e for e in check(root)))
+    def testBuildReferenceDocumentsAreExcluded(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name); self.fixture(root)
+            reference = root / 'build/reference/README.md'; reference.parent.mkdir(parents=True)
+            reference.write_text('[unrelated](missing.txt)')
+            self.assertEqual(check(root), [])
     def testOutsideLinkFails(self):
         with tempfile.TemporaryDirectory() as name:
             root = Path(name); self.fixture(root)

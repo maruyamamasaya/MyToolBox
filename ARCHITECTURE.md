@@ -1,7 +1,7 @@
 # Architecture
 
 ## System Overview
-MyToolBoxはツール集のシェルと個別ツールで構成する。システムモニターと10のローカルツールを実装。Swiftの共通監視ライブラリをCLI PoCとネイティブアプリが共有する。外部通信・DB・認証不要。
+MyToolBoxはツール集のシェルと個別ツールで構成する。システムモニターと11のローカルツールを実装。Swiftの共通監視ライブラリをCLI PoCとネイティブアプリが共有する。外部通信・DB・認証不要。
 
 ```text
 AppDelegate → ツール一覧NSStatusItem / 数値NSStatusItem → 単一NSPopover
@@ -21,7 +21,7 @@ Swift 5 language mode（Xcode 26.6 / Swift 6.3.3で検証）、macOS 14+ arm64�
 - `Sources/MyToolBox/App/ToolCatalog.swift`：実装済みツールのID・名称・説明・アイコン。AppDelegateが明示的に画面へ振り分ける。
 - `Sources/MyToolBox/App`：アプリ起動・ステータス項目・transient popover・UI状態・ログイン起動・sleep通知。
 - `Sources/MyToolBox/UI`：390×620ptの一覧カード・詳細・グラフ・設定。popover内で画面を切替、再表示時は一覧へ戻す。
-- `Sources/MyToolBox/Tools`：共通ToolPage/ToolCard、10専用UI、ToolWindows、CSVModel、SpeakerModel、MicrophoneModel。window終了/sleepで音声停止。
+- `Sources/MyToolBox/Tools`：共通ToolPage/ToolCard、11専用UI、ToolWindows、CSVModel、SpeakerModel、MicrophoneModel。window終了/sleepで音声停止。
 - `Sources/MonitorKit/Tools`：CSVパーサ・書出し、営業日、音声信号の純粋ロジック。祝日JSONをbundleから読込。テキスト変換も共通処理として実装。
 - `Sources/MonitorKit/Core`：値状態、差分、履歴、設定、取得actor、独立したログ保存actor。
 - `Sources/MonitorKit/Monitoring`：独立した機能別collector。
@@ -46,3 +46,5 @@ MainActorの1つのTaskがactor取得完了を待ち、snapshot・時刻付き60
 [MyToolBox.xcodeproj](MyToolBox.xcodeproj)は実在するnative app target。共有Swiftファイルを直接コンパイルする。Swift Packageはライブラリ・CLI・単体テスト用で、Xcodeの外部package解決を不要にした。ad hoc署名のローカル.app、CI/CD・公証なし。
 
 採用理由は[0002](decisions/0002-poc-and-native-mvp.md)。
+
+比較ツールはテキスト差分とリスト比較の入力を共有する。ComparisonModelはUI状態、専用ComparisonWorker actorはUIスレッド外の直列計算、MonitorKitのTextComparison/ListComparisonは純粋ロジック。編集時は旧Taskをcancelし、古い結果を公開しない。LCSと変更行対応付けは行数・バイト数・協調的な時間予算で制限する。詳細は[比較ツール](docs/COMPARISON_TOOLS.md)。

@@ -2,7 +2,7 @@
 
 ## Local Development
 
-macOS 14+ / Apple Silicon / Xcode。確認環境はM1 Max・32 GiB、macOS 26.6.2、Xcode 26.6 (17F113)、Swift 6.3.3。Xcode選択先は `/Applications/Xcode.app/Contents/Developer`。Gitは未初期化。
+macOS 14+ / Apple Silicon / Xcode。確認環境はM1 Max・32 GiB、macOS 26.6.2、Xcode 26.6 (17F113)、Swift 6.3.3。Xcode選択先は `/Applications/Xcode.app/Contents/Developer`。Gitはローカルmainで管理。リモートは未設定。
 
 ## Build / Run
 
@@ -75,3 +75,9 @@ Xcodeで `MyToolBox.xcodeproj` を開きMyToolBoxスキームを実行しても�
 専用actorが直列保存、UIスレッド外。閉じても記録、スリープと終了中は記録しない。復帰時は差分とログ間隔の基準をリセット。失敗は設定画面に表示し監視を継続。
 
 日別ファイルの末尾が保存期限より古くなったら削除するため、7日指定では最大約8日残る。整理は書込時最大1時間ごと、停止中は削除しない。対象は専用フォルダ内の正規名の通常ファイルだけ。1日32MiB上限で当日の書込をエラー停止し、無制限に増やさない。保持上限30日なら最大約1GiB。停止しても既存ログは即時削除しない。
+
+## Git管理
+
+原本Webツールは別リポジトリmaruyamamasaya/tool。本リポジトリはネイティブ実装・文書・検証用の合成画像を管理する。初期スナップショットは `cb4b563`。`git status --short`、`git diff`、`git log --oneline` で確認する。
+
+`.build/`、`build/`、生成.app、実行ログ、環境変数ファイル・秘密鍵類は除外。監視の実行ログは従来どおりApplication Support内で管理し、Gitへ追加しない。除外設定は秘密検出の代替ではない。GitHub接続・push・公開は行っていない。新規checkoutでは標準verifyで.appを生成する。

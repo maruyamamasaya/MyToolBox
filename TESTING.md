@@ -97,7 +97,7 @@ RAM残りは `testAvailableMemoryUsesSameEstimateAndRejectsInvalidValues` で総
 `tools/RenderDashboard.swift` は同じDashboardを通常ユーザーの実サンプルでオフスクリーン描画する。デスクトップ操作の成功とは区別する。
 
 ```sh
-CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" xcrun swiftc -parse-as-library Sources/MonitorKit/Core/*.swift Sources/MonitorKit/Monitoring/*.swift Sources/MonitorKit/Utilities/*.swift Sources/MyToolBox/App/MonitorStore.swift Sources/MyToolBox/App/ToolCatalog.swift Sources/MyToolBox/UI/Dashboard.swift Sources/MyToolBox/UI/SettingsPanel.swift Sources/MyToolBox/UI/ToolLauncher.swift tools/RenderDashboard.swift -o build/render-dashboard
+CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" xcrun swiftc -parse-as-library Sources/MonitorKit/Core/*.swift Sources/MonitorKit/Monitoring/*.swift Sources/MonitorKit/Utilities/*.swift Sources/MyToolBox/App/MonitorStore.swift Sources/MyToolBox/App/ToolCatalog.swift Sources/MyToolBox/UI/Dashboard.swift Sources/MyToolBox/UI/SettingsPanel.swift Sources/MyToolBox/UI/AppTheme.swift Sources/MyToolBox/UI/ToolLauncher.swift tools/RenderDashboard.swift -o build/render-dashboard
 build/render-dashboard
 ```
 
@@ -111,14 +111,14 @@ build/render-dashboard
 
 ## ローカル5ツール
 
-LocalToolsTestsとTextToolsTestsを含む全51件。CSV引用符/改行/末尾空行/Unicode/Shift_JIS/上限、不正入力、公表済み祝日/独自休日/期間境界、左右信号/フェード/RMSを検証。手動操作の合否基準は[ローカルツール](docs/LOCAL_TOOLS.md)。音声のテストは信号の純粋計算のみで、スピーカー再生やマイク許可を自動実行しない。
+LocalToolsTestsとTextToolsTestsを含む全58件。CSV引用符/改行/末尾空行/Unicode/Shift_JIS/上限、不正入力、公表済み祝日/独自休日/期間境界、左右信号/フェード/RMSを検証。手動操作の合否基準は[ローカルツール](docs/LOCAL_TOOLS.md)。音声のテストは信号の純粋計算のみで、スピーカー再生やマイク許可を自動実行しない。
 
 ```sh
-CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" xcrun swiftc -parse-as-library Sources/MonitorKit/Tools/*.swift Sources/MyToolBox/App/ToolCatalog.swift Sources/MyToolBox/UI/ToolLauncher.swift Sources/MyToolBox/Tools/*.swift tools/RenderLocalTools.swift -o build/render-local-tools
+CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" xcrun swiftc -parse-as-library Sources/MonitorKit/Tools/*.swift Sources/MyToolBox/App/ToolCatalog.swift Sources/MyToolBox/UI/AppTheme.swift Sources/MyToolBox/UI/ToolLauncher.swift Sources/MyToolBox/Tools/*.swift tools/RenderLocalTools.swift -o build/render-local-tools
 build/render-local-tools
 ```
 
-evidence/tool-*.pngの14画面をオフスクリーン描画。CSVは合成データ、音声/マイクは未開始。Info.plistのマイク用途、署名のaudio-input entitlement、bundleのJapaneseHolidays.jsonも確認する。新UIの一覧→営業日と1週間計算は実機操作・目視済み。GUI全体・実録音・装置切替・sleepは別途未検証。
+evidence/tool-*.pngの16画面をオフスクリーン描画。CSVは合成データ、音声/マイクは未開始。Info.plistのマイク用途、署名のaudio-input entitlement、bundleのJapaneseHolidays.jsonも確認する。新UIの一覧→営業日と1週間計算は実機操作・目視済み。GUI全体・実録音・装置切替・sleepは別途未検証。
 
 ## テキスト系・CSV実操作
 
@@ -138,3 +138,9 @@ build/regex-budget-probe
 ```
 
 これは専用の悪条件入力で0.25秒予算を確認する。初回実行は外側の3秒subprocess timeoutも付け、evidence/regex-budget.txtへ記録。OS/ICUの全パターンに厳密な実時間上限を保証するものではない。
+
+## 比較ツール・Gitからの初回ビルド
+
+ComparisonTestsの7件は空行・末尾改行・行番号・語単位/Unicode差分、ランダムな行列の再構築、1,000行境界・容量超過、集合の順序/重複/大文字小文字/空白を検証する。Fullに含む。合成描画2画面と実機操作の結果は[比較ツール](docs/COMPARISON_TOOLS.md)。
+
+Python検証器テストは5件。Fastは未生成の宣言済みRelease.appリンクだけ許容する。他の欠落リンクは失敗し、build内の参照clone文書は走査しない。Fullは必ず実ビルドと.app・署名を確認する。生成物をGitへ入れず初回checkoutから検証できるための例外であり、アプリ検証の省略ではない。

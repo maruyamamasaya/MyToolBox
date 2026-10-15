@@ -1,6 +1,6 @@
 /// Installed tools only; each route has a native implementation.
 enum ToolID: String, CaseIterable, Identifiable {
-    case systemMonitor, businessDays, audioCheck, microphoneCheck, csvViewer, csvEditor, sequentialText, clipboardFormatter, textCleaner, lineTools, stringReplacer
+    case systemMonitor, businessDays, audioCheck, microphoneCheck, csvViewer, csvEditor, sequentialText, clipboardFormatter, textCleaner, lineTools, stringReplacer, comparison
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -15,6 +15,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .textCleaner: return "テキストクリーナー"
         case .lineTools: return "行ツール"
         case .stringReplacer: return "検索・置換"
+        case .comparison: return "比較ツール"
         }
     }
     var subtitle: String {
@@ -30,6 +31,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .textCleaner: return "不可視文字・空行・箇条書きを整理"
         case .lineTools: return "並べ替え・行抽出・重複を確認"
         case .stringReplacer: return "文字列・正規表現・複数ルールで置換"
+        case .comparison: return "テキスト差分・リストの共通と片側のみ"
         }
     }
     var symbol: String {
@@ -45,6 +47,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .textCleaner: return "sparkles"
         case .lineTools: return "arrow.up.arrow.down"
         case .stringReplacer: return "text.magnifyingglass"
+        case .comparison: return "rectangle.split.2x1"
         }
     }
 }

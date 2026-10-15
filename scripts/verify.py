@@ -18,6 +18,7 @@ REQUIRED = {
     'decisions/README.md': ['Context', 'Decision', 'Reason', 'Alternatives', 'Consequences'],
     'sessions/README.md': ['Request', 'Investigation', 'Changes', 'Files Changed', 'Validation', 'Result', 'Remaining Issues'],
 }
+GENERATED_ARTIFACTS = {'build/Build/Products/Release/MyToolBox.app'}
 LIMITS = {'AGENTS.md': 120, 'CURRENT.md': 80, 'CODEMAP.md': 160}
 
 
@@ -34,7 +35,7 @@ def check(root, fast=False):
                 errors.append(f'{name}: required topic missing: {section}')
     for path in sorted(root.rglob('*.md')):
         relative = path.relative_to(root)
-        if any(part.startswith('.') for part in relative.parts):
+        if any(part.startswith('.') for part in relative.parts) or relative.parts[0] == 'build':
             continue
         body = path.read_text(encoding='utf-8')
         # The repository uses inline Markdown links. Anchors and remote URLs are not checked.
@@ -46,7 +47,7 @@ def check(root, fast=False):
             destination = (path.parent / unquote(parsed.path)).resolve()
             if not destination.is_relative_to(root.resolve()):
                 errors.append(f'{relative}: link escapes repository: {target}')
-            elif not destination.exists():
+            elif not destination.exists() and destination.relative_to(root.resolve()).as_posix() not in GENERATED_ARTIFACTS:
                 errors.append(f'{relative}: broken link: {target}')
         if not fast:
             limit = LIMITS.get(str(relative))

@@ -14,6 +14,8 @@ import SwiftUI
         let duplicates = LineToolModel(); duplicates.mode = .duplicates; duplicates.input = " Apple \napple\nAPPLE\nbanana"; duplicates.duplicates.ignoreCase = true; duplicates.update()
         let replacer = ReplacerModel(); replacer.input = "Apple apple\napple_test"; replacer.options.mode = .replace; replacer.options.query = "apple"; replacer.options.replacement = "orange"; replacer.run()
         let list = ListConverterModel(); list.input = " apple, banana,apple "; list.options.input = .comma; list.options.deduplicate = true; list.options.format = .json; list.update()
+        let comparison = ComparisonModel(); comparison.left = "server = production\ntimeout = 30\nregion = Tokyo"; comparison.right = "server = production\ntimeout = 60\nregion = Tokyo\nretry = 3"; comparison.compare()
+        let comparedLists = ComparisonModel(); comparedLists.mode = .lists; comparedLists.left = "apple\nbanana\norange\napple"; comparedLists.right = "banana\norange\ngrape"; comparedLists.compare()
         try await Task.sleep(nanoseconds: 500_000_000)
         let views: [(String, AnyView, NSSize)] = [
             ("launcher", AnyView(ToolLauncher(openTool: { _ in }, openMonitorSettings: {})), NSSize(width: 440, height: ToolLauncher.preferredHeight)),
@@ -29,6 +31,8 @@ import SwiftUI
             ("line-filter", AnyView(LineToolsView(model: filter)), NSSize(width: 1080, height: 860)),
             ("duplicate-finder", AnyView(LineToolsView(model: duplicates)), NSSize(width: 1080, height: 820)),
             ("string-replacer", AnyView(ReplacerView(model: replacer)), NSSize(width: 1100, height: 1050)),
+            ("text-comparison", AnyView(ComparisonView(model: comparison)), NSSize(width: 1100, height: 1000)),
+            ("list-comparison", AnyView(ComparisonView(model: comparedLists)), NSSize(width: 1100, height: 900)),
             ("list-converter", AnyView(ClipboardWorkspaceView(table: ClipboardFormatterModel(), list: list, listMode: true)), NSSize(width: 1080, height: 940))
         ]
         for (name, view, size) in views {

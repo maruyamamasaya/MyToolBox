@@ -44,3 +44,5 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [2026-10-15：テキスト3ツール・CSV実機試験・アイコン一覧](2026-10-15-19-text-tools-csv.md)
 
 - [2026-10-15：行・置換・リストの5機能を統合追加](2026-10-15-20-line-tools.md)
+
+- [2026-10-15：比較ツールとGit管理](2026-10-15-22-comparison-git.md)

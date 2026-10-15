@@ -17,4 +17,4 @@ Source: Cabinet Office, Government of Japan, [national holidays](https://www8.ca
 
 ## Browser tools (behavioral reference)
 
-[maruyamamasaya/tool](https://github.com/maruyamamasaya/tool), revision c011a4aa3518af8c72686ed3cf6950363b3612d7. No repository license was identified. Its thirteen tools were inspected for behavior; source code and assets were not copied or bundled. Native Swift implementations are independent.
+[maruyamamasaya/tool](https://github.com/maruyamamasaya/tool), revision c011a4aa3518af8c72686ed3cf6950363b3612d7. No repository license was identified. Its fifteen tools were inspected for behavior; source code and assets were not copied or bundled. Native Swift implementations are independent.
