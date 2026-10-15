@@ -49,7 +49,7 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 
 - [ログハイライター](docs/LOG_HIGHLIGHTER.md)：ログレベル色分け・絞り込み・前後行・検索移動・カスタム強調・コピー。実機UI確認は未実施。
 
-- [JSONツール](docs/JSON_TOOLS.md)：共有入力の構造ビュー・整形・ビルダー。数値の正確な保持・JSON Pointer・型付き編集に対応。検証状況はsessionsを参照。
+- [JSONツール](docs/JSON_TOOLS.md)：共有入力の構造ビュー・整形・ビルダー。数値の正確な保持・JSON Pointer・型付き編集に対応。3モード切替と基本操作を実機確認、/Applications版を更新済み。[記録](sessions/2026-10-15-42-json-workspace.md)。
 
 - [正規表現・表・CSV統計の4ツール](docs/DATA_WORKBENCH.md)：テスター、条件ビルダー、Markdown/HTML/CSV出力、列別統計。小さなデータ向け。Fast／Full・3テーマ描画成功、実機操作と/Applications更新は未実施。
 
