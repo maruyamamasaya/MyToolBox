@@ -113,3 +113,5 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [追加27ツールの代表操作・実機確認](2026-10-15-50-additional-tools-live.md)
 
 - [保存・再読み込み修正と検証記録のコミット](2026-10-15-51-commit-fixes.md)
+
+- [一括検証後の修正版をアプリへ反映](2026-10-15-51-install-verified-fixes.md)
