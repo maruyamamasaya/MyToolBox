@@ -20,7 +20,10 @@ import SwiftUI
         case .regexBuilder: controller = ToolWindow(title: tool.title, view: RegexBuilderView())
         case .tableBuilder: controller = ToolWindow(title: tool.title, view: TableBuilderView())
         case .csvStatistics: controller = ToolWindow(title: tool.title, view: CSVStatisticsView())
-        case .jsonWorkspace: controller = ToolWindow(title: tool.title, view: JSONWorkspaceView())
+        case .jsonWorkspace:
+            let model = JSONWorkspaceModel()
+            controller = ToolWindow(title: tool.title, view: JSONWorkspaceView(model: model))
+            controller.canClose = { model.confirmClose() }
         case .logHighlighter: controller = ToolWindow(title: tool.title, view: LogHighlighterView())
         case .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator: controller = ToolWindow(title: tool.title, view: EverydayCalculatorView(tool: tool))
         case .cidrAnalyzer: controller = ToolWindow(title: tool.title, view: CIDRAnalyzerView())

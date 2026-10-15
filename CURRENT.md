@@ -7,7 +7,7 @@ MyToolBox：ローカル完結のmacOSツール集。最初のツールはM1 Max
 
 ## 現在のフェーズ
 Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テスト・ビルドを実行。移行完了ではない。
-最新版49ツールを/Applicationsへ反映・再起動済み。Fast／Full・署名検証成功。配置は[更新記録](sessions/2026-10-15-47-install-all-additions.md)、追加27本の代表操作は[実機記録](sessions/2026-10-15-50-additional-tools-live.md)。
+修正済み49ツールを/Applicationsへ反映・再起動済み。単体140件／Full・署名・全ファイル一致確認。直近の修正と配置は[実機確認記録](sessions/2026-10-15-52-remaining-live-fixes.md)。
 
 ## 実装済み
 - [共通3テーマ](docs/THEMES.md)：Blue Cosmos／Living Aurora／Windows 98。設定・一覧・各ツールから切替、開いている全画面へ反映・永続化。
@@ -50,16 +50,18 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 
 - [ログハイライター](docs/LOG_HIGHLIGHTER.md)：ログレベル色分け・絞り込み・前後行・検索移動・カスタム強調・コピー。専用プロセスで解析・ERROR絞り込み・検索移動を実機確認。
 
-- [JSONツール](docs/JSON_TOOLS.md)：共有入力の構造ビュー・整形・ビルダー。数値の正確な保持・JSON Pointer・型付き編集に対応。3モード切替と基本操作を実機確認、/Applications版を更新済み。[記録](sessions/2026-10-15-42-json-workspace.md)。
+- [JSONツール](docs/JSON_TOOLS.md)：共有入力の構造ビュー・整形・ビルダー。数値保持・JSON Pointer・型付き編集に対応。JSONのドロップ読込・UTF-8保存・未保存確認を追加。[ファイル検証](sessions/2026-10-15-51-json-files.md)。入力欄／本文への実ファイルdrop・通常編集・キャンセル保持を実機確認し、修正版を/Applicationsへ配置・起動済み。[記録](sessions/2026-10-15-42-json-workspace.md)。
 
 - [正規表現・表・CSV統計の4ツール](docs/DATA_WORKBENCH.md)：テスター・条件ビルダー・Markdown/HTML/CSV出力・列別統計。最新版配置済み、4画面の代表入力・編集・コピー・エラー復帰を実機確認。表の3形式保存・CSV再読込も[確認済み](sessions/2026-10-15-50-table-file-roundtrip.md)。[記録](sessions/2026-10-15-48-data-tools-live.md)。
 
 - [SQLツール](docs/SQL_TOOLS.md)：簡易整形・基本SELECTの定型説明・一時SQLite実行を3タブに統合。最新版へ配置し、サンプルの整形・説明・2行の実行結果を実機確認。
 
-- [追加ツール一括検証](sessions/2026-10-15-49-batch-tool-validation.md)：単体138件・モデル23項目・Full成功、32画面×3テーマ描画。メモ／生成／検索を隔離環境で実操作。CIDRのCRLF行数とポート候補の番号表記を修正。
+- [追加ツール一括検証](sessions/2026-10-15-49-batch-tool-validation.md)：単体140件・モデル23項目・Full成功、32画面×3テーマ描画。メモ／生成／検索を隔離環境で実操作。CIDRのCRLF行数とポート候補の番号表記を修正。
+
+- [残る実機確認](sessions/2026-10-15-52-remaining-live-fixes.md)：メモJSON往復・表のWindows 98実表示／編集／コピー・SQL復帰を確認。ログの旧結果コピーとclassic ×の不動作を修正。
 
 ## 進行中
-[ツール集のロードマップ](docs/ROADMAP.md)に沿って機能を拡張。実機UI操作・長時間検証、[可視化案](docs/VISUALIZATION_ROADMAP.md)を次段階に残す。
+[IME・実sleep・8時間観測](sessions/2026-10-15-54-ime-sleep-soak.md)はユーザー依頼で中止。監視・検証用アプリと定期追跡を停止。[ロードマップ](docs/ROADMAP.md)・[可視化案](docs/VISUALIZATION_ROADMAP.md)は継続。
 
 ## 未実装
 Battery温度・電力、内部SSD単独I/O、配布用署名／公証。
@@ -74,4 +76,5 @@ Battery温度・電力、内部SSD単独I/O、配布用署名／公証。
 Git管理済み（main、origin: https://github.com/maruyamamasaya/MyToolBox）。CI未整備。OS APIハングの強制timeoutなし。センサーの絶対精度・他機種互換性未検証、UI自動検証なし。
 
 ## 次に行うこと
+未確認項目の再開順序・合否基準・停止済み試験は[引き継ぎチェックリスト](sessions/2026-10-15-56-resume-checklist.md)に集約。最新版メモの実機操作と/Applications反映が最初の残件。
 [移行チェックリスト](docs/MIGRATION_CHECKLIST.md)のGUI・設定・sleep・IF切替を実機確認。温度の負荷追従・ファン回転中の観測、画像を参考にした可視化を進める。

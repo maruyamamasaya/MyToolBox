@@ -18,10 +18,14 @@ import SwiftUI
     private let suite = "local.MyToolBox.ManualCheck." + UUID().uuidString
     private lazy var defaults = UserDefaults(suiteName: suite)!
     private let storage = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("MyToolBox-ManualCheck-" + UUID().uuidString)
-    static let tools: [ToolID] = [.cidrAnalyzer, .dnsRecordBuilder, .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator, .localMemo, .portNumberFinder, .httpStatusViewer, .randomNumberGenerator, .hashGenerator, .testDataGenerator, .logHighlighter, .regexBuilder, .csvStatistics, .userAgent, .colorPalette, .imageResizer]
+    static let tools: [ToolID] = [.tableBuilder, .jsonWorkspace, .sqlWorkspace, .cidrAnalyzer, .dnsRecordBuilder, .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator, .localMemo, .portNumberFinder, .httpStatusViewer, .randomNumberGenerator, .hashGenerator, .testDataGenerator, .logHighlighter, .regexBuilder, .csvStatistics, .userAgent, .colorPalette, .imageResizer]
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu(); let appMenu = NSMenu(); let item = NSMenuItem(); item.submenu = appMenu; menu.addItem(item)
         appMenu.addItem(withTitle: "検証を終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let editItem = NSMenuItem(); let edit = NSMenu(title: "Edit"); editItem.submenu = edit; menu.addItem(editItem)
+        for (title, action, key) in [("Undo", "undo:", "z"), ("Redo", "redo:", "Z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] {
+            edit.addItem(withTitle: title, action: Selector(action), keyEquivalent: key)
+        }
         NSApp.mainMenu = menu
         let root = VStack(alignment: .leading, spacing: 10) {
             Text("MyToolBox 実機確認").font(.title)
@@ -35,11 +39,15 @@ import SwiftUI
         launcher.isReleasedWhenClosed = false; launcher.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     private func show(_ tool: ToolID) {
-        if let active { active.window?.performClose(nil); if active.window?.isVisible == true { return } }
+        if let active { ThemeWindowActions.close(active.window); if active.window?.isVisible == true { return } }
         let view: AnyView
         var cleanup: () -> Void = {}
         var canClose: () -> Bool = { true }
         switch tool {
+        case .tableBuilder: view = AnyView(TableBuilderView())
+        case .jsonWorkspace: view = AnyView(JSONWorkspaceView())
+        case .sqlWorkspace:
+            let model = SQLWorkspaceModel(); view = AnyView(SQLWorkspaceView(model: model)); cleanup = { model.stop() }
         case .cidrAnalyzer: view = AnyView(CIDRAnalyzerView())
         case .dnsRecordBuilder: view = AnyView(DNSRecordBuilderView())
         case .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator: view = AnyView(EverydayCalculatorView(tool: tool))

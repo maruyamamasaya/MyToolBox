@@ -3,7 +3,8 @@ import UniformTypeIdentifiers
 
 struct ToolLauncher: View {
     @Environment(\.appTheme) private var theme
-    static var preferredHeight: CGFloat { 680 }
+    static let preferredWidth: CGFloat = 560
+    static var preferredHeight: CGFloat { 740 }
     @AppStorage(ToolFavorites.storageKey) private var favoritesRaw = "[]"
     private var favorites: Set<String> { ToolFavorites.decode(favoritesRaw) }
     @State private var query = ""
@@ -80,7 +81,7 @@ struct ToolLauncher: View {
                 Spacer()
                 Text("監視はバックグラウンドで継続").font(theme.font(9)).foregroundStyle(.secondary)
             }.buttonStyle(ThemeButtonStyle(plain: true)).font(theme.font( 11)).foregroundStyle(.secondary).padding(.horizontal, 22).padding(.vertical, 14).background { if theme.classic { theme.surface.overlay(ClassicBevel()) } }
-        }.frame(width: 440, height: Self.preferredHeight).background(theme.classic ? theme.background : .clear)
+        }.frame(width: Self.preferredWidth, height: Self.preferredHeight).background(theme.classic ? theme.background : .clear)
     }
     private func toolSection(_ title: String, tools: [ToolID], favoriteSection: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -91,7 +92,7 @@ struct ToolLauncher: View {
                 if favoriteSection { Text("ドラッグで並べ替え").font(theme.font(10)).foregroundStyle(.secondary) }
                 Rectangle().fill(theme.text.opacity(0.12)).frame(height: 1)
             }.accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 8) {
                 ForEach(tools) { tool in
                     if favoriteSection {
                         toolButton(tool)

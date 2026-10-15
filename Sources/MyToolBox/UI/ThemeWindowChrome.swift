@@ -27,6 +27,16 @@ struct ThemeWindowBridge: NSViewRepresentable {
         if let window = view.window { view.apply?(window) }
     }
 }
+/// Borderless classic windows have no native close button, so performClose is a no-op.
+/// Keep the delegate veto (unsaved CSV / failed memo save) before closing directly.
+@MainActor enum ThemeWindowActions {
+    static func close(_ window: NSWindow?) {
+        guard let window else { return }
+        window.makeFirstResponder(nil)
+        guard window.delegate?.windowShouldClose?(window) ?? true else { return }
+        window.close()
+    }
+}
 struct ClassicTitleBar: View {
     let title: String
     @StateObject private var handle = ClassicWindowHandle()
@@ -37,7 +47,7 @@ struct ClassicTitleBar: View {
             Spacer()
             action("ウィンドウを最小化", glyph: "_", symbol: .miniaturizeButton) { handle.window?.miniaturize(nil) }
             action("ウィンドウサイズを切替", glyph: "□", symbol: .zoomButton) { handle.window?.zoom(nil) }
-            action("ウィンドウを閉じる", glyph: "×", symbol: .closeButton) { handle.window?.performClose(nil) }
+            action("ウィンドウを閉じる", glyph: "×", symbol: .closeButton) { ThemeWindowActions.close(handle.window) }
         }.foregroundStyle(.white).padding(.horizontal, 4).frame(height: 24)
             .background(handle.active ? Color(hex: 0x000080) : Color(hex: 0x808080))
             .background(DragRegion(handle: handle))

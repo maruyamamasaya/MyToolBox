@@ -10,7 +10,12 @@ public struct LocalMemoNote: Codable, Identifiable, Equatable {
         id = UUID().uuidString; title = ""; content = ""
         createdAt = LocalMemoArchive.timestamp(now); updatedAt = createdAt
     }
-    public var displayTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "無題のメモ" : title }
+    public var displayTitle: String {
+        let firstLine = content.split(whereSeparator: \.isNewline).first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
+        if !firstLine.isEmpty { return String(firstLine.prefix(80)) }
+        let legacyTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return legacyTitle.isEmpty ? "新しいメモ" : legacyTitle
+    }
 }
 
 public struct LocalMemoSnapshot: Codable, Identifiable {

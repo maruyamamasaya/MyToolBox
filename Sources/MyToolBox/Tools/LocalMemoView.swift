@@ -94,15 +94,21 @@ struct LocalMemoView: View {
     @ObservedObject var model: LocalMemoModel
     @State private var showsHistory = false
     var body: some View {
-        ToolPage("ローカルメモ", subtitle: "メモをこのMacに自動保存。JSONでバックアップできます。", symbol: "note.text", tint: .yellow) {
+        VStack(spacing: 0) {
             VStack(spacing: 14) {
                 HStack {
                     Button("新しいメモ", systemImage: "plus") { model.add() }.disabled(!model.writable)
                     Text("\(model.notes.count)件").foregroundStyle(.secondary)
                     Spacer()
-                    Button("履歴") { showsHistory = true }
-                    Button("JSONを書き出す") { model.exportJSON() }
-                    Button("JSONから復元") { model.importJSON() }.disabled(!model.writable)
+                    Menu {
+                        Button("履歴") { showsHistory = true }
+                        Button("JSONを書き出す") { model.exportJSON() }
+                        Button("JSONから復元") { model.importJSON() }.disabled(!model.writable)
+                        Divider()
+                        Button("このメモを削除", role: .destructive) { model.delete() }.disabled(model.selected == nil || !model.writable)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("メモの操作")
                 }
                 HStack(alignment: .top, spacing: 16) {
                     ScrollView {
@@ -117,14 +123,10 @@ struct LocalMemoView: View {
                                 }.buttonStyle(.plain).accessibilityValue(model.selectedID == note.id ? "選択中" : "未選択")
                             }
                         }
-                    }.frame(width: 220)
+                    }.frame(width: 180)
                     ToolCard {
                         if model.selected != nil {
                             VStack(spacing: 12) {
-                                HStack {
-                                    TextField("タイトル", text: Binding(get: { model.selected?.title ?? "" }, set: { model.update(title: $0) })).textFieldStyle(.roundedBorder).accessibilityLabel("メモタイトル")
-                                    Button("削除", role: .destructive) { model.delete() }
-                                }
                                 TextEditor(text: Binding(get: { model.selected?.content ?? "" }, set: { model.update(content: $0) }))
                                     .font(.body).accessibilityLabel("メモ本文")
                             }.disabled(!model.writable)
@@ -137,14 +139,16 @@ struct LocalMemoView: View {
                     Text(model.status).font(.caption).textSelection(.enabled)
                     Spacer()
                     if !model.writable { Button("再読み込み") { model.load() } }
-                    Button("今すぐ保存") { model.save(forceSnapshot: true) }.disabled(!model.writable)
+                    if model.writable && model.status.contains("保存できません") {
+                        Button("保存を再試行") { model.save() }
+                    }
                 }
-            }.padding(22)
-        }.frame(minWidth: 850, minHeight: 620)
+            }.padding(14)
+        }.frame(minWidth: 600, minHeight: 420)
             .sheet(isPresented: $showsHistory) {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("バックアップ履歴").font(.title2)
-                    Text("最新5世代。編集中は最短1分ごと、追加・手動保存・削除／復元前にも記録します。").font(.caption)
+                    Text("最新5世代。編集中は最短1分ごと、追加・削除／復元前にも記録します。").font(.caption)
                     if model.archive.history.isEmpty { Text("履歴はまだありません") }
                     ForEach(model.archive.history) { snapshot in
                         HStack {

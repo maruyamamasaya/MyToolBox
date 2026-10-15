@@ -61,6 +61,18 @@ private struct Record: NSViewRepresentable {
         try await Task.sleep(nanoseconds: 400_000_000)
         guard window.styleMask.contains(.titled) else { throw ToolFailure.message("Real ToolWindow native title restore failed") }
         print("PASS: real ToolWindow native title restored")
+        VisualTheme.windows98.save(to: defaults)
+        try await Task.sleep(for: .milliseconds(400))
+        var closed = 0, cleaned = 0, asked = 0
+        restored.closed = { closed += 1 }; restored.cleanup = { cleaned += 1 }
+        restored.canClose = { asked += 1; return false }
+        window.orderFront(nil)
+        ThemeWindowActions.close(window)
+        guard window.isVisible, asked == 1, closed == 0, cleaned == 0 else { throw ToolFailure.message("Classic close bypassed unsaved-data veto") }
+        restored.canClose = { asked += 1; return true }
+        ThemeWindowActions.close(window)
+        guard !window.isVisible, asked == 2, closed == 1, cleaned == 1 else { throw ToolFailure.message("Classic close lifecycle failed") }
+        print("PASS: classic close respects delegate veto, closes and cleans up once")
         print("Classic font: \(NSFont(name: AppTheme(id: .windows98).fontName, size: 11)?.fontName ?? "system fallback")")
     }
 }

@@ -148,3 +148,34 @@ public enum JSONWorkspace {
         }
     }
 }
+
+/// Bounded UTF-8 file exchange. Validation precedes any destination write.
+public enum JSONWorkspaceFile {
+    public static let maximumBytes = 256 * 1024
+    public static func read(_ url: URL) throws -> String {
+        guard url.isFileURL else { throw ToolFailure.message("ローカルのJSONファイルを選んでください。") }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let info = try url.resourceValues(forKeys: [.isRegularFileKey])
+        guard info.isRegularFile == true else { throw ToolFailure.message("通常のJSONファイルを選んでください。") }
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var data = Data()
+        while data.count < maximumBytes + 4 {
+            guard let part = try handle.read(upToCount: maximumBytes + 4 - data.count), !part.isEmpty else { break }
+            data.append(part)
+        }
+        if data.starts(with: [0xEF, 0xBB, 0xBF]) { data.removeFirst(3) }
+        guard data.count <= maximumBytes else { throw ToolFailure.message("ファイルは256 KiBまでです。") }
+        guard let text = String(data: data, encoding: .utf8) else { throw ToolFailure.message("UTF-8のJSONファイルを選んでください。") }
+        _ = try JSONWorkspace.parse(text)
+        return text
+    }
+    public static func save(_ text: String, to url: URL) throws {
+        guard url.isFileURL else { throw ToolFailure.message("ローカルの保存先を選んでください。") }
+        _ = try JSONWorkspace.parse(text)
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        try Data(text.utf8).write(to: url, options: .atomic)
+    }
+}

@@ -82,6 +82,10 @@ struct LogHighlighterView: View {
                 ToolFootnote(text: "ログは保存・送信しません。検索は表示中の行を対象にし、レベル判定は行内で最も重大なキーワードを優先します。")
             }.padding(20)
         }.frame(minWidth: 1000, minHeight: 710)
+        .onChange(of: input) { _, value in
+            lines = []; current = 0
+            status = value.isEmpty ? "" : "入力が変わりました。「ログ解析」で更新してください。"
+        }
         .onChange(of: query) { _, _ in current = 0 }
         .onChange(of: context) { _, _ in current = 0 }
     }

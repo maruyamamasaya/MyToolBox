@@ -204,7 +204,7 @@ ImageResizerTestsでPNG寸法/透明・JPEG白背景/形式・EXIF向き補正�
 
 ログハイライター：LogHighlighterTestsでレベル判定・改行・前後行・検索を検証。実機では3テーマ、検索の前後移動、フィルター後のコピー、折り返し、2 MB超過時の案内を確認する。
 
-JSONツール：`JSONWorkspaceTests`で数値精度・JSON往復・構文／Unicode／重複キー・CRLFと行列・入力上限・部分木編集を検証。`tools/RenderJSONWorkspace.swift`でモデル操作と3モード×3テーマを合成描画。実機受け入れは[JSON仕様](docs/JSON_TOOLS.md)。
+JSONツール：`JSONWorkspaceTests`で数値精度・JSON往復・構文／Unicode／重複キー・CRLFと行列・入力上限・部分木編集・ファイル往復／BOM／入出力失敗を検証。`tools/RenderJSONWorkspace.swift`でモデルの読込・編集・保存・失敗時保持と3モード×3テーマを検証。実機受け入れは[JSON仕様](docs/JSON_TOOLS.md)。
 
 ## 正規表現・表・CSV統計
 
@@ -217,3 +217,5 @@ SQLツール：SQLToolsTestsで引用保持・整形の実行結果一致・SELE
 [実行記録](sessions/2026-10-15-49-batch-tool-validation.md)。AddedToolsTests／ServerAndEverydayTestsを標準Swiftテストに追加。`tools/VerifyAddedTools.swift`は全Sources（ProbeとMyToolBoxAppを除く）と一緒にコンパイルし`build/verify-added-tools`で実行。合成ファイル・隔離UserDefaultsによる保存失敗／復旧・モデル遷移と3テーマ描画を行う。画面は`build/added-tools-preview/`、ログは`build/validation/added-tools-probe.log`。実機の全操作とは区別する。
 
 表ビルダー：`testSavedTableCSVReopensExactly`で実ファイルのUTF-8／BOM付きCSVの往復、日本語・引用符・セル内改行・末尾空欄、サイズ／行数／構文エラーを検証。保存3形式、windowを閉じた後のCSV再読込、保存キャンセルの保持は[実機記録](sessions/2026-10-15-50-table-file-roundtrip.md)。
+
+残る実機確認：[メモJSON往復・表の実表示／編集／コピー・SQL復帰・ログ／classic close修正](sessions/2026-10-15-52-remaining-live-fixes.md)。ThemeSwitchProbeは終了拒否とclose／cleanup各1回も確認。IME未確定・全組合せ・実sleep等は未確認として区別する。

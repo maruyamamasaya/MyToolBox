@@ -82,7 +82,9 @@ final class AddedToolsTests: XCTestCase {
         for i in 0..<7 { archive.snapshot(now: Date(timeIntervalSince1970: Double(i))); archive.notes[0].content = String(i) }
         XCTAssertEqual(archive.history.count, 5); XCTAssertEqual(archive.history[0].notes[0].content, "5")
         XCTAssertEqual(try JSONDecoder().decode(LocalMemoArchive.self, from: JSONEncoder().encode(archive)).notes, archive.notes)
-        var blank = note; blank.title = " \n"; XCTAssertEqual(blank.displayTitle, "無題のメモ")
+        XCTAssertEqual(note.displayTitle, "a")
+        var blank = note; blank.content = ""; XCTAssertEqual(blank.displayTitle, "日本語😀")
+        blank.title = " \n"; XCTAssertEqual(blank.displayTitle, "新しいメモ")
     }
     func testMemoRejectsDamagedData() throws {
         let note = LocalMemoNote()

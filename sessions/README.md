@@ -115,3 +115,14 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [保存・再読み込み修正と検証記録のコミット](2026-10-15-51-commit-fixes.md)
 
 - [一括検証後の修正版をアプリへ反映](2026-10-15-51-install-verified-fixes.md)
+- [JSONファイルの読込・保存](2026-10-15-51-json-files.md)
+
+- [残る実機確認とログ／Windows 98の修正](2026-10-15-52-remaining-live-fixes.md)
+
+- [ツール一覧の表示領域拡大](2026-10-15-53-launcher-size.md)
+
+- [IME・スリープ・8時間観測の進行記録](2026-10-15-54-ime-sleep-soak.md)
+
+- [ローカルメモの入力画面を簡素化](2026-10-15-55-memo-simple-editor.md)
+
+- [未確認項目の引き継ぎ・再開チェックリスト](2026-10-15-56-resume-checklist.md)

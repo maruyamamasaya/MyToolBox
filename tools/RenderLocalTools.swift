@@ -56,7 +56,7 @@ import SwiftUI
             ("text-codec", AnyView(TextCodecView(model: codec)), NSSize(width: 1000, height: 720)),
             ("text-inspector", AnyView(TextCleanerView(model: inspector)), NSSize(width: 1000, height: 760)),
             ("text-visualizer", AnyView(TextCleanerView(model: visual)), NSSize(width: 1000, height: 760)),
-            ("launcher", AnyView(ToolLauncher(openTool: { _ in }, openMonitorSettings: {})), NSSize(width: 440, height: ToolLauncher.preferredHeight)),
+            ("launcher", AnyView(ToolLauncher(openTool: { _ in }, openMonitorSettings: {})), NSSize(width: ToolLauncher.preferredWidth, height: ToolLauncher.preferredHeight)),
             ("business-days", AnyView(BusinessDaysView(model: CalendarWorkspaceModel(holidayURL: URL(fileURLWithPath: "Resources/JapaneseHolidays.json")))), NSSize(width: 820, height: 960)),
             ("csv-viewer", AnyView(CSVToolView(model: viewer)), NSSize(width: 1000, height: 740)),
             ("csv-editor", AnyView(CSVToolView(model: editor)), NSSize(width: 1000, height: 820)),

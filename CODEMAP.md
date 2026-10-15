@@ -70,7 +70,7 @@ User-Agent Viewer：`UserAgentInfo.swift`（UA推定）→ `UserAgentView.swift`
 
 ログ解析：`LogHighlighter.swift`（LogLevel／LogEntry）→ `LogHighlighterView.swift` → ToolCatalog／ToolWindows。`LogHighlighterTests.swift`。[仕様](docs/LOG_HIGHLIGHTER.md)。
 
-JSON：`JSONWorkspace.swift`（数値保持パーサ・部分木編集）→ `JSONWorkspaceView.swift`（共有入力・構造／整形／ビルダー）→ ToolCatalog／ToolWindows。`JSONWorkspaceTests.swift`、`tools/RenderJSONWorkspace.swift`。[仕様](docs/JSON_TOOLS.md)。
+JSON：`JSONWorkspace.swift`（数値保持パーサ・部分木編集・JSONWorkspaceFileのUTF-8入出力）→ `JSONWorkspaceView.swift`（共有入力・構造／整形／ビルダー）→ ToolCatalog／ToolWindows。`JSONWorkspaceTests.swift`、`tools/RenderJSONWorkspace.swift`。[仕様](docs/JSON_TOOLS.md)。
 
 正規表現・表・CSV統計：`RegexWorkbench.swift`／`SmallDataTools.swift` → `RegexToolViews.swift`／`SmallDataToolViews.swift` → ToolCatalog／ToolWindows。`RegexAndSmallDataTests.swift`、`tools/RenderDataWorkbench.swift`。[仕様](docs/DATA_WORKBENCH.md)。
 

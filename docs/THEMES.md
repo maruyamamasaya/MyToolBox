@@ -29,3 +29,5 @@
 参照先と同じくWindows 98のUI文法を再現する。Windows OS全体のエミュレーターではない。フォントはインストール済みMicrosoft Sans Serifを優先し、なければTahoma／macOSの代替フォントを使用する。日本語グリフ・アンチエイリアスはmacOS依存。今回の実機ではMicrosoft Sans Serifを利用できることを確認した。ファイル／日付／メニューのOSポップアップ、スクロール挙動、メニューバー、アクセス許可画面はmacOSの機能を使う。元OSの全画素との完全一致とは区別する。
 
 検証方法は[TESTING](../TESTING.md)。
+
+Windows 98の×は未保存データのdelegate確認を経由して閉じる。borderless windowでnative performCloseが動かない問題を[実機で修正・検証](../sessions/2026-10-15-52-remaining-live-fixes.md)。ThemeSwitchProbeでも終了拒否とcleanup各1回を検証。

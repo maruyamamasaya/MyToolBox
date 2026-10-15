@@ -85,7 +85,7 @@ import ServiceManagement
         present(ToolLauncher(openTool: { [weak self] tool in
             if tool == .systemMonitor { self?.showMonitor(fromToolbox: true) }
             else { self?.popover.close(); self?.toolWindows.show(tool) }
-        }, openMonitorSettings: { [weak self] in self?.showMonitor(settings: true, fromToolbox: true) }), size: NSSize(width: 440, height: ToolLauncher.preferredHeight), anchor: button)
+        }, openMonitorSettings: { [weak self] in self?.showMonitor(settings: true, fromToolbox: true) }), size: NSSize(width: ToolLauncher.preferredWidth, height: ToolLauncher.preferredHeight), anchor: button)
     }
     @objc func toggleTools() {
         if popover.isShown && showingTools { popover.performClose(nil) } else { showTools() }

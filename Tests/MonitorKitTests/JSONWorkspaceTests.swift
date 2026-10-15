@@ -43,4 +43,40 @@ final class JSONWorkspaceTests: XCTestCase {
         XCTAssertEqual(try JSONWorkspace.parse(root.encoded()), root)
         root.replace(at: [], with: .array([])); XCTAssertEqual(root, .array([]))
     }
+    func testFileRoundTripAndBOM() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = folder.appendingPathComponent("日本語.json")
+        let output = folder.appendingPathComponent("edited.json")
+        let original = #"{"name":"日本語","big":123456789012345678901234567890}"#
+        try (Data([0xEF, 0xBB, 0xBF]) + Data(original.utf8)).write(to: source)
+        var root = try JSONWorkspace.parse(JSONWorkspaceFile.read(source))
+        root.replace(at: [0], with: .string("編集済み"))
+        let edited = root.encoded(indent: 4)
+        try JSONWorkspaceFile.save(edited, to: output)
+        XCTAssertEqual(try JSONWorkspaceFile.read(output), edited)
+        XCTAssertEqual(try JSONWorkspaceFile.read(source), original)
+        // Explicitly choosing the same destination supports atomic replacement.
+        try JSONWorkspaceFile.save("[true,null]", to: output)
+        XCTAssertEqual(try JSONWorkspaceFile.read(output), "[true,null]")
+    }
+    func testFileRejectionsPreserveDestination() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("invalid.json")
+        let output = folder.appendingPathComponent("keep.json")
+        try Data("{}".utf8).write(to: output)
+        for bytes in [Data([0xFF, 0xFE, 0x00]), Data("[1,]".utf8), Data(repeating: 32, count: JSONWorkspaceFile.maximumBytes + 1)] {
+            try bytes.write(to: file)
+            XCTAssertThrowsError(try JSONWorkspaceFile.read(file))
+        }
+        XCTAssertThrowsError(try JSONWorkspaceFile.read(folder))
+        XCTAssertThrowsError(try JSONWorkspaceFile.read(folder.appendingPathComponent("missing.json")))
+        XCTAssertThrowsError(try JSONWorkspaceFile.save("[1,]", to: output))
+        XCTAssertEqual(try String(contentsOf: output, encoding: .utf8), "{}")
+        XCTAssertThrowsError(try JSONWorkspaceFile.save("{}", to: folder.appendingPathComponent("missing/out.json")))
+    }
+
 }

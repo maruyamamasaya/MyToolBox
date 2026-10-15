@@ -30,6 +30,33 @@ import SwiftUI
         try check(model.root == nil && model.error != nil, "invalid input clears result")
         model.text = before; await model.refresh()
         try check(model.root != nil && model.error == nil, "recovery")
+        let fixture = URL(fileURLWithPath: "build/json-file-check")
+        try FileManager.default.createDirectory(at: fixture, withIntermediateDirectories: true)
+        let source = fixture.appendingPathComponent("source.json")
+        let output = fixture.appendingPathComponent("edited.json")
+        try Data(before.utf8).write(to: source)
+        let files = JSONWorkspaceModel()
+        files.load(source)
+        while files.fileBusy { try await Task.sleep(for: .milliseconds(20)) }
+        try check(files.text == before && !files.isDirty && files.fileURL == source, "file load baseline")
+        files.load(source)
+        while files.fileBusy { try await Task.sleep(for: .milliseconds(20)) }
+        try check(files.root != nil, "identical file reload preserves tree")
+        await files.refresh()
+        files.selection = [1]
+        files.edit(key: "", kind: "string", value: "ファイル編集", add: false)
+        try check(files.isDirty, "file edit is dirty")
+        files.save(to: output)
+        while files.fileBusy { try await Task.sleep(for: .milliseconds(20)) }
+        try check(!files.isDirty && files.fileURL == output, "save baseline")
+        try check(try JSONWorkspaceFile.read(output) == files.text, "real saved data")
+        try check(try JSONWorkspaceFile.read(source) == before, "original unchanged")
+        files.load(fixture.appendingPathComponent("missing.json"))
+        while files.fileBusy { try await Task.sleep(for: .milliseconds(20)) }
+        try check(files.fileError != nil && !files.isDirty, "read failure keeps baseline")
+        files.save(to: fixture.appendingPathComponent("missing/output.json"))
+        while files.fileBusy { try await Task.sleep(for: .milliseconds(20)) }
+        try check(files.fileError != nil && files.fileURL == output, "save failure keeps file association")
         for theme in VisualTheme.allCases {
             for mode in ["構造ビュー", "整形", "ビルダー"] {
                 let size = NSSize(width: 1100, height: 800)
@@ -38,6 +65,12 @@ import SwiftUI
                 window.appearance = NSAppearance(named: theme == .windows98 ? .aqua : .darkAqua)
                 window.contentView = host; host.frame = NSRect(origin: .zero, size: size)
                 window.displayIfNeeded(); try await Task.sleep(for: .milliseconds(450)); host.layoutSubtreeIfNeeded()
+                func inputEditor(_ view: NSView) -> NSTextView? {
+                    if let editor = view as? NSTextView { return editor }
+                    return view.subviews.compactMap { inputEditor($0) }.first
+                }
+                guard let editor = inputEditor(host), let scroll = editor.enclosingScrollView else { fatalError("missing input editor") }
+                try check(editor.frame.height >= scroll.contentSize.height && editor.frame.width > 0, "input editor fills viewport")
                 guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { fatalError("bitmap") }
                 host.cacheDisplay(in: host.bounds, to: bitmap)
                 let folder = URL(fileURLWithPath: "build/json-preview/\(theme.rawValue)")
@@ -45,6 +78,6 @@ import SwiftUI
                 try bitmap.representation(using: .png, properties: [:])!.write(to: folder.appendingPathComponent("\(mode).png"))
             }
         }
-        print("PASS: builder edit/add/remove, Pointer, duplicate protection, invalid input recovery, 9 theme/mode renders")
+        print("PASS: builder edit/add/remove, Pointer, invalid input recovery, file load/edit/save/reload/failure, 9 theme/mode renders")
     }
 }

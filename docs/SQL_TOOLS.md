@@ -22,6 +22,6 @@ macOS標準SQLiteのメモリ内DBを専用actorで直列実行。employees（id
 
 ## 検証
 SQLToolsTestsで引用・コメント保持、整形前後のSQLite実行結果一致、SELECT句説明、実SQLiteの複数文・JOIN・NULL、失敗時ロールバック、外部操作拒否、件数／文数／時間上限と復帰を検証。
-実機UIの3テーマ・タブ移動・コピー・初期化確認は未実施。
+サンプル整形・説明・実行に加え、Windows 98でCSVコピー内容、エラー復帰、DB初期化キャンセル後の結果保持を[実機確認](../sessions/2026-10-15-52-remaining-live-fixes.md)。全テーマ／全SQLの組合せは未確認。
 
 SQLite API仕様：[authorizer](https://www.sqlite.org/c3ref/set_authorizer.html)、[progress handler](https://www.sqlite.org/c3ref/progress_handler.html)、[prepare](https://www.sqlite.org/c3ref/prepare.html)。
