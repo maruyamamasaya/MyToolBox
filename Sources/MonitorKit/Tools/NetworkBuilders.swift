@@ -66,7 +66,7 @@ public enum NetworkBuilders {
     }
     public static func analyze(_ text: String) throws -> Analysis {
         guard text.utf8.count <= 100_000 else { throw Failure.invalid("入力は100KB以内にしてください。") }
-        let lines = text.components(separatedBy: .newlines)
+        let lines = text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: .newlines)
         guard lines.count <= 1000 else { throw Failure.invalid("入力は1,000行以内にしてください。") }
         var subnets: [Subnet] = [], errors: [String] = []
         for (i, line) in lines.enumerated() where !line.trimmingCharacters(in: .whitespaces).isEmpty {

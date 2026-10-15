@@ -101,3 +101,5 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [11ツールの参照機能照合・不足補完（テスト保留）](2026-10-15-45-server-everyday-parity.md)
 
 - [追加ツール一式のコミット・プッシュ](2026-10-15-46-commit-tool-additions.md)
+
+- [追加分のアプリ反映](2026-10-15-47-install-all-additions.md)

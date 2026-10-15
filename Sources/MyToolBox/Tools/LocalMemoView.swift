@@ -10,10 +10,11 @@ import UniformTypeIdentifiers
     private var dirty = false
     var notes: [LocalMemoNote] { archive.notes.sorted { (LocalMemoArchive.date($0.updatedAt) ?? .distantPast) > (LocalMemoArchive.date($1.updatedAt) ?? .distantPast) } }
     var selected: LocalMemoNote? { archive.notes.first { $0.id == selectedID } }
-    init() { load() }
+    private let storageDirectory: URL?
+    init(storageDirectory: URL? = nil) { self.storageDirectory = storageDirectory; load() }
     func load() {
         do {
-            let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("MyToolBox/LocalMemo", isDirectory: true)
+            let directory = try storageDirectory ?? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("MyToolBox/LocalMemo", isDirectory: true)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let url = directory.appendingPathComponent("memo-v1.json")
             let exists = FileManager.default.fileExists(atPath: url.path)
@@ -56,7 +57,7 @@ import UniformTypeIdentifiers
         alert.addButton(withTitle: "実行"); alert.addButton(withTitle: "キャンセル")
         return alert.runModal() == .alertFirstButtonReturn
     }
-    private func replace(_ notes: [LocalMemoNote]) {
+    func replace(_ notes: [LocalMemoNote]) {
         guard writable, save(forceSnapshot: true) else { return }
         // Preserve the pre-operation snapshot; the next edit creates the next generation.
         archive.notes = notes; selectedID = self.notes.first?.id; dirty = true; save()
