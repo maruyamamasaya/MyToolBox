@@ -90,3 +90,4 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [ハッシュ・テストデータ生成の統合追加（テスト保留）](2026-10-15-39-developer-generators.md)
 
 - [GitHubへの保存](2026-10-15-40-github-push.md)
+- [サーバー・ネットワーク・日常計算11本（テスト保留）](2026-10-15-38-server-everyday-tools.md)

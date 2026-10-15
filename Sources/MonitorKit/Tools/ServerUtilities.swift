@@ -41,7 +41,12 @@ public enum ServerUtilities {
         public let fields: [String]
         public let values: [Set<Int>]
         public var descriptions: [String] {
-            zip(["分", "時", "日", "月", "曜日（0=日曜）"], fields).map { "\($0.0): \($0.1)" }
+            let names = ["分", "時", "日", "月", "曜日"]
+            let weekdays = ["日", "月", "火", "水", "木", "金", "土"]
+            return fields.indices.map { i in
+                let expanded = fields[i] == "*" ? "すべて" : values[i].sorted().map { i == 4 ? weekdays[$0] + "曜" : String($0) }.joined(separator: "、")
+                return "\(names[i]): \(expanded)（\(fields[i])）"
+            }
         }
         /// Standard five-field cron: restricted day-of-month/day-of-week use OR.
         public func next(after date: Date, timeZone: TimeZone, count: Int = 5) -> [Date] {

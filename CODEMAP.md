@@ -65,3 +65,5 @@ User-Agent Viewer：`UserAgentInfo.swift`（UA推定）→ `UserAgentView.swift`
 乱数生成：`RandomNumbers.swift` → `RandomNumberView.swift` → ToolCatalog／ToolWindows。`RandomNumbersTests.swift`。[仕様](docs/RANDOM_NUMBERS.md)。
 
 生成ツール：`DeveloperGenerators.swift`（TextHash／TestDataGenerator）→ `DeveloperGeneratorView.swift`（GeneratorModel／各画面）→ ToolCatalog／ToolWindows。CryptoKit、CSVDocument.serializeを使用。[統合仕様・保留テスト](docs/DEVELOPER_GENERATORS.md)。
+
+サーバー・日常計算11本：`EverydayCalculators.swift`／`NetworkBuilders.swift`／`ServerUtilities.swift`／`CommandReference.swift`／`DirectoryTree.swift` → `EverydayCalculatorViews.swift`／`NetworkBuilderViews.swift`／`ServerUtilityViews.swift`／`DirectoryTreeView.swift` → ToolCatalog / ToolWindows。[仕様](docs/SERVER_AND_EVERYDAY_TOOLS.md)、[未実施テスト項目](docs/SERVER_AND_EVERYDAY_TEST_PLAN.md)。

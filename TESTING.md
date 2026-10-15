@@ -199,3 +199,5 @@ ImageResizerTestsでPNG寸法/透明・JPEG白背景/形式・EXIF向き補正�
 ポート番号検索・HTTPステータス一覧：ユーザー指示で全検証を保留。[後日のテスト項目](docs/NETWORK_REFERENCE.md)に検索・分類・データ・UI・ビルド確認を集約。
 
 ハッシュ・テストデータ生成：ユーザー指示で全検証を保留。[後日テスト](docs/DEVELOPER_GENERATORS.md)にSHA既知値・UUID v4・生成制約・CSV往復・キャンセル・UI確認を集約。
+
+サーバー・ネットワーク・日常計算11本：今回はユーザー指示で全検証を保留。[マージ後のテスト項目](docs/SERVER_AND_EVERYDAY_TEST_PLAN.md)にロジック境界値・正常/異常系・3テーマ・永続化・ビルドの未実施項目を集約。

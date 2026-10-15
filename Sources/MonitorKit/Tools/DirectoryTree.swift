@@ -38,12 +38,22 @@ public enum DirectoryTree {
         var nodes: [Node] = []
         for raw in text.components(separatedBy: .newlines) where !raw.trimmingCharacters(in: .whitespaces).isEmpty {
             let line = raw.replacingOccurrences(of: "\t", with: "    ")
-            let chars = Array(line); var offset = 0
-            while offset < chars.count && (chars[offset] == " " || chars[offset] == "│" || chars[offset] == "|") { offset += 1 }
-            let rest = String(chars.dropFirst(offset))
-            let branch = ["├── ", "└── ", "|-- ", "`-- ", "+-- "].first { rest.hasPrefix($0) }
-            let depth = branch == nil ? offset / 2 : offset / 4 + 1
-            var name = branch.map { String(rest.dropFirst($0.count)) } ?? rest
+            var depth = 0
+            var name = line
+            var foundBranch = false
+            for marker in ["├── ", "└── ", "|-- ", "`-- ", "+-- "] {
+                if let range = line.range(of: marker) {
+                    let prefix = line[..<range.lowerBound]
+                    if prefix.count % 4 == 0 && prefix.allSatisfy({ $0 == " " || $0 == "│" || $0 == "|" }) {
+                        depth = prefix.count / 4 + 1; name = String(line[range.upperBound...]); foundBranch = true; break
+                    }
+                }
+            }
+            if !foundBranch {
+                let spaces = line.prefix { $0 == " " }.count
+                guard spaces % 2 == 0 else { throw Failure.invalid("字下げは2スペース単位で指定してください。") }
+                depth = spaces / 2; name = String(line.dropFirst(spaces))
+            }
             let folder = name.hasSuffix("/")
             if folder { name.removeLast() }
             nodes.append(Node(name: name, folder: folder, depth: depth))

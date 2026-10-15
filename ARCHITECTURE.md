@@ -58,3 +58,5 @@ User-Agent Viewerは非永続WKWebViewへ同梱HTML文字列だけを読み込�
 画像リサイズはImageIO/CoreGraphicsを使用し、専用ImageResizeWorker actorで読込・デコード・変換・保存を直列処理する。プレビューと出力はwindow内メモリで保持。寸法・形式・品質変更で古い結果を破棄し、保存は明示操作。追加ランタイム・外部パッケージ不要。
 
 時間ツールはUtilityTimerの日時差分をTimerBoardModel／FocusTimerModelが0.25秒ごとに表示へ反映する。ボードは設定・実行基準日時をローカル保存し、close時に一時停止。TimeCalculationは勤務時間・時間帯合計の純粋計算。詳細は[時間ツール](docs/TIME_TOOLS.md)。
+
+サーバー・ネットワーク・日常計算11本は純粋ロジックをMonitorKit、専用画面をMyToolBox/Toolsへ分離。ネットワーク・サーバーカテゴリを追加。コマンド実行・通信は行わず、ツリー構成のみUserDefaultsへ自動保存・明示JSON保存。詳細は[仕様](docs/SERVER_AND_EVERYDAY_TOOLS.md)。

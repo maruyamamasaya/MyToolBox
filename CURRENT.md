@@ -45,6 +45,8 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 
 - [ハッシュ・テストデータ生成](docs/DEVELOPER_GENERATORS.md)：4参照ツールを2入口へ統合。SHA／文章／文字列／CSV／UUID v4。ビルド・テスト・.app更新は保留。
 
+- [サーバー・ネットワーク・日常計算11本](docs/SERVER_AND_EVERYDAY_TOOLS.md)：CIDR・DNS・単位・割合・電卓・数値集計とLinux系5本を追加。ユーザー指定でビルド／テスト／実機／.app更新は保留。
+
 ## 進行中
 [ツール集のロードマップ](docs/ROADMAP.md)に沿って機能を拡張。実機UI操作・長時間検証、[可視化案](docs/VISUALIZATION_ROADMAP.md)を次段階に残す。
 
