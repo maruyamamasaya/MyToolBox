@@ -4,7 +4,14 @@ import ServiceManagement
 
 @main struct MyToolBoxApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    var body: some Scene { Settings { EmptyView() } }
+    var body: some Scene {
+        Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appTermination) {
+                    Button("MyToolBoxを終了…") { delegate.requestTermination() }
+                }
+            }
+    }
 }
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private var status: NSStatusItem!
@@ -59,7 +66,7 @@ import ServiceManagement
     }
     private func present<Content: View>(_ content: Content, size: NSSize, anchor: NSStatusBarButton) {
         if popover.isShown { popover.close() }
-        popover.contentViewController = NSHostingController(rootView: content)
+        popover.contentViewController = NSHostingController(rootView: ThemeRoot { content })
         popover.contentSize = size
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
@@ -88,6 +95,16 @@ import ServiceManagement
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showTools(); return false
+    }
+    func requestTermination() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "MyToolBoxを終了しますか？"
+        alert.informativeText = "終了するとシステム監視と定期ログの記録が停止します。画面を閉じるだけなら監視は継続します。"
+        alert.addButton(withTitle: "監視を続ける")
+        alert.addButton(withTitle: "終了する")
+        alert.alertStyle = .warning
+        if alert.runModal() == .alertSecondButtonReturn { NSApp.terminate(nil) }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply { toolWindows.canTerminate() ? .terminateNow : .terminateCancel }
     func applicationWillTerminate(_ notification: Notification) { toolWindows.stopAudio() }

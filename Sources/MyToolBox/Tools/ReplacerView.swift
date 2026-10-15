@@ -28,13 +28,14 @@ import SwiftUI
     func copy() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(output, forType: .string); status = "コピーしました" }
 }
 struct ReplacerView: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: ReplacerModel
     private let tint = Color(red: 0.89, green: 0.23, blue: 0.27)
     var body: some View {
         ToolPage("検索・置換", subtitle: "探す、書き換える、まとめて整える。", symbol: "text.magnifyingglass", tint: tint) {
             ScrollView {
                 VStack(spacing: 16) {
-                    Picker("処理モード", selection: $model.options.mode) { ForEach(StringReplacer.Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
+                    ThemePicker("処理モード", selection: $model.options.mode, options: StringReplacer.Mode.allCases.map { ($0, $0.rawValue) }, tabs: true)
                     ToolCard {
                         VStack(alignment: .leading, spacing: 14) {
                             if model.options.mode == .rules {
@@ -45,8 +46,8 @@ struct ReplacerView: View {
                                 ToolTextEditor(text: $model.options.deletionList, label: "複数削除する文字列").frame(height: 85)
                             } else {
                                 HStack(spacing: 14) {
-                                    VStack(alignment: .leading, spacing: 6) { ToolSectionLabel(title: "検索する文字列", symbol: "magnifyingglass"); ToolTextEditor(text: $model.options.query, label: "検索する文字列").frame(height: 65).background(.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8)) }
-                                    if model.options.mode == .replace { VStack(alignment: .leading, spacing: 6) { ToolSectionLabel(title: "置換後（空欄も可）", symbol: "arrow.right"); ToolTextEditor(text: $model.options.replacement, label: "置換後の文字列").frame(height: 65).background(.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8)) } }
+                                    VStack(alignment: .leading, spacing: 6) { ToolSectionLabel(title: "検索する文字列", symbol: "magnifyingglass"); ToolTextEditor(text: $model.options.query, label: "検索する文字列").frame(height: 65).background(.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 8)) }
+                                    if model.options.mode == .replace { VStack(alignment: .leading, spacing: 6) { ToolSectionLabel(title: "置換後（空欄も可）", symbol: "arrow.right"); ToolTextEditor(text: $model.options.replacement, label: "置換後の文字列").frame(height: 65).background(.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 8)) } }
                                 }
                             }
                             HStack(spacing: 20) {
@@ -56,11 +57,11 @@ struct ReplacerView: View {
                                 Toggle(". が改行にも一致", isOn: $model.options.dotAll)
                                 if model.options.mode == .delete { Toggle("複数削除", isOn: $model.options.multipleDelete) }
                                 Spacer()
-                            }.toggleStyle(.checkbox)
+                            }.toggleStyle(ThemeToggleStyle())
                             HStack {
-                                Button { model.run() } label: { Label(model.options.mode.rawValue + "を実行", systemImage: "play.fill") }.buttonStyle(.borderedProminent).disabled(model.busy)
+                                Button { model.run() } label: { Label(model.options.mode.rawValue + "を実行", systemImage: "play.fill") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.busy)
                                 if model.busy { ProgressView().controlSize(.small); Button("キャンセル") { model.cancel() } }
-                                Text(model.valid ? "該当：\(model.count) 件" : model.status).font(.caption).foregroundStyle(.secondary)
+                                Text(model.valid ? "該当：\(model.count) 件" : model.status).font(theme.font(11)).foregroundStyle(.secondary)
                                 Spacer()
                             }
                         }
@@ -76,9 +77,9 @@ struct ReplacerView: View {
                         Button { model.input = NSPasteboard.general.string(forType: .string) ?? "" } label: { Label("貼り付け", systemImage: "doc.on.clipboard") }
                         Button("クリア") { model.input = ""; model.output = ""; model.invalidate() }
                         Button("結果を入力へ") { model.input = model.output }.disabled(!model.valid)
-                        Text(model.status).font(.caption).foregroundStyle(.secondary)
+                        Text(model.status).font(theme.font(11)).foregroundStyle(.secondary)
                         Spacer()
-                        Button { model.copy() } label: { Label("結果をコピー", systemImage: "doc.on.doc") }.buttonStyle(.borderedProminent).disabled(!model.valid || model.busy)
+                        Button { model.copy() } label: { Label("結果をコピー", systemImage: "doc.on.doc") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(!model.valid || model.busy)
                     }
                     ToolFootnote(text: "複数ルールは上から順に適用します。正規表現はICU形式、置換は$1〜$99・$&・$$などに対応。入力256KiB、1ルール0.25秒、100ルール上限（通常文字列は1MiB）。変更後は実行ボタンで再計算します。")
                 }.padding(24)
@@ -88,6 +89,7 @@ struct ReplacerView: View {
     }
 }
 struct ClipboardWorkspaceView: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var table: ClipboardFormatterModel
     @ObservedObject var list: ListConverterModel
     @State private var listMode = false
@@ -98,7 +100,7 @@ struct ClipboardWorkspaceView: View {
         ToolPage("クリップボード整形", subtitle: "表もリストも、必要な形にまとめる。", symbol: "clipboard", tint: .teal) {
             VStack(spacing: 0) {
                 HStack {
-                    Picker("整形モード", selection: $listMode) { Text("表の整形").tag(false); Text("リスト変換").tag(true) }.pickerStyle(.segmented).frame(width: 340)
+                    ThemePicker("整形モード", selection: $listMode, options: [(false, "表の整形"), (true, "リスト変換")], tabs: true).frame(width: 340)
                     Spacer()
                     Button(listMode ? "表の入力を引き継ぐ" : "リストの入力を引き継ぐ") {
                         if listMode { list.input = table.input; list.update() } else { table.input = list.input; table.parse() }

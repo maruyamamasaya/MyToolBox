@@ -15,6 +15,7 @@ actor TextProcessor {
     @Published var status = ""
     @Published var busy = false
     @Published var count = ""
+    @Published var cleanerMode = "クリーニング"
     @Published var start = "1"
     @Published var increment = "1"
     @Published var options = SequentialText.Options()
@@ -22,14 +23,16 @@ actor TextProcessor {
     let cleaner: Bool
     init(cleaner: Bool = false) { self.cleaner = cleaner }
     func update() {
-        task?.cancel(); status = ""; busy = true
-        let input = input; var settings = options
+        task?.cancel(); status = ""; output = ""; busy = true
+        let input = input, cleanerMode = cleanerMode; var settings = options
         let start = Int64(start), increment = Int64(increment)
         task = Task {
             do {
                 try await Task.sleep(nanoseconds: 150_000_000)
                 if cleaner {
-                    let result = try await TextProcessor.shared.clean(input)
+                    let result: String
+                    if cleanerMode == "クリーニング" { result = try await TextProcessor.shared.clean(input) }
+                    else { result = try await TextCodecWorker.shared.run(input, mode: cleanerMode == "文字チェック" ? .inspect : .visualize).text }
                     try Task.checkCancellation(); output = result; count = "\(input.count) → \(result.count) 文字"
                 } else {
                     guard let start, let increment else { throw ToolFailure.message("開始番号と増加数は64ビット整数で入力してください") }
@@ -113,9 +116,10 @@ actor TextProcessor {
 
 /// Plain-text native editor; both input and selectable read-only output scale to bounded text.
 struct ToolTextEditor: NSViewRepresentable {
+    @Environment(\.appTheme) private var theme
     @Binding var text: String
     var editable = true
-    var label: String
+    var label: String = "テキスト"
     var highlights: [NSRange] = []
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> NSScrollView {
@@ -135,6 +139,11 @@ struct ToolTextEditor: NSViewRepresentable {
         context.coordinator.parent = self
         guard let view = scroll.documentView as? NSTextView else { return }
         view.isEditable = editable; view.setAccessibilityLabel(label)
+        view.textColor = NSColor(theme.text); view.insertionPointColor = NSColor(theme.text)
+        view.drawsBackground = theme.classic; view.backgroundColor = NSColor(theme.surfaceHigh)
+        view.selectedTextAttributes = [.backgroundColor: NSColor(theme.accent), .foregroundColor: NSColor.white]
+        scroll.borderType = theme.classic ? .bezelBorder : .noBorder
+        scroll.scrollerStyle = theme.classic ? .legacy : .overlay
         let changed = view.string != text
         if changed {
             let selection = view.selectedRange(); view.string = text
@@ -157,6 +166,7 @@ struct ToolTextEditor: NSViewRepresentable {
     }
 }
 struct TextPane: View {
+    @Environment(\.appTheme) private var theme
     var title: String
     var symbol: String
     @Binding var text: String
@@ -165,14 +175,16 @@ struct TextPane: View {
     var highlights: [NSRange] = []
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack { ToolSectionLabel(title: title, symbol: symbol); Spacer(); Text("\(text.count) 文字").font(.system(size: 10, design: .monospaced)).foregroundStyle(.tertiary) }.padding(13)
+            HStack { ToolSectionLabel(title: title, symbol: symbol); Spacer(); Text("\(text.count) 文字").font(theme.font( 10, design: .monospaced)).foregroundStyle(.tertiary) }.padding(13)
             Divider().opacity(0.5)
             ToolTextEditor(text: $text, editable: editable, label: title, highlights: highlights).frame(minHeight: 120, maxHeight: .infinity)
-        }.background(Color(nsColor: .controlBackgroundColor).opacity(0.5), in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(tint.opacity(0.18)))
+        }.background(theme.classic ? theme.surfaceHigh : theme.surfaceHigh.opacity(0.5), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 14))
+            .overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 14).strokeBorder(tint.opacity(0.18)))
+            .classicBevel(sunken: true)
     }
 }
 struct SequentialTextView: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: TextTransformModel
     private let tint = Color.indigo
     var body: some View {
@@ -184,15 +196,15 @@ struct SequentialTextView: View {
                         HStack(spacing: 18) {
                             LabeledContent("開始") { TextField("1", text: $model.start).frame(width: 80).accessibilityLabel("開始番号") }
                             LabeledContent("増加数") { TextField("1", text: $model.increment).frame(width: 80) }
-                            Picker("桁数", selection: $model.options.digits) { ForEach(1..<9) { Text(String(repeating: "0", count: $0 - 1) + "1").tag($0) } }.frame(width: 140)
-                            Picker("位置", selection: $model.options.atEnd) { Text("行の先頭").tag(false); Text("行の末尾").tag(true) }.frame(width: 160)
+                            ThemePicker("桁数", selection: $model.options.digits, options: (1..<9).map { ($0, String(repeating: "0", count: $0 - 1) + "1") }).frame(width: 140)
+                            ThemePicker("位置", selection: $model.options.atEnd, options: [(false, "行の先頭"), (true, "行の末尾")]).frame(width: 160)
                         }
                         HStack(spacing: 18) {
                             TextField("前に付ける文字（item- など）", text: $model.options.prefix)
                             TextField("区切り文字", text: $model.options.separator).frame(width: 130).accessibilityLabel("区切り文字")
                             TextField("後ろに付ける文字", text: $model.options.suffix)
-                            Toggle("空行も連番対象", isOn: $model.options.numberEmptyLines).toggleStyle(.checkbox)
-                        }.textFieldStyle(.roundedBorder)
+                            Toggle("空行も連番対象", isOn: $model.options.numberEmptyLines).toggleStyle(ThemeToggleStyle())
+                        }.textFieldStyle(ThemeTextFieldStyle())
                     }
                 }
                 HStack(spacing: 16) {
@@ -208,28 +220,31 @@ struct SequentialTextView: View {
     }
 }
 struct TextCleanerView: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: TextTransformModel
     private let tint = Color.pink
     var body: some View {
         ToolPage("テキストクリーナー", subtitle: "貼り付けた文章を、すっきり整える。", symbol: "sparkles", tint: tint) {
             VStack(spacing: 18) {
+                ThemePicker("モード", selection: $model.cleanerMode, options: ["クリーニング", "文字チェック", "可視化"].map { ($0, $0) }, tabs: true)
                 HStack(spacing: 8) {
-                    ForEach(["プレーンテキスト", "不可視文字を除去", "連続空行を整理", "箇条書きの改行を結合"], id: \.self) { Text($0).font(.system(size: 11, weight: .medium)).padding(.horizontal, 11).padding(.vertical, 8).background(tint.opacity(0.09), in: Capsule()) }
+                    ForEach(["プレーンテキスト", "不可視文字を除去", "連続空行を整理", "箇条書きの改行を結合"], id: \.self) { Text($0).font(theme.font( 11, weight: .medium)).padding(.horizontal, 11).padding(.vertical, 8).background(tint.opacity(0.09), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 50)) }
                     Spacer()
                 }
                 HStack(spacing: 16) {
                     TextPane(title: "元のテキスト", symbol: "text.alignleft", text: $model.input, tint: tint)
-                    TextPane(title: "クリーンなテキスト", symbol: "sparkles", text: $model.output, editable: false, tint: tint)
+                    TextPane(title: model.cleanerMode == "クリーニング" ? "クリーンなテキスト" : model.cleanerMode, symbol: "sparkles", text: $model.output, editable: false, tint: tint)
                 }
                 TextToolActions(model: model, tint: tint)
                 ToolCard {
-                    ToolFootnote(text: "通常の空白と1つの改行は残します。改行コードを統一し、ノーブレークスペース・ゼロ幅スペース・BOMを整理。単独の「・」は次の本文とつなぎます。元の文章を左側で確認できます。")
+                    ToolFootnote(text: "文字チェックは不可視文字などの確認用で、文字コードの自動判定ではありません。可視化は空白・改行・タブを記号に置き換えます。通常の空白と1つの改行は残します。改行コードを統一し、ノーブレークスペース・ゼロ幅スペース・BOMを整理。単独の「・」は次の本文とつなぎます。元の文章を左側で確認できます。")
                 }
             }.padding(24)
-        }.frame(minWidth: 940, minHeight: 670).onChange(of: model.input) { _, _ in model.update() }.onDisappear { model.stop() }
+        }.frame(minWidth: 940, minHeight: 670).onChange(of: model.cleanerMode) { _, _ in model.update() }.onChange(of: model.input) { _, _ in model.update() }.onDisappear { model.stop() }
     }
 }
 struct TextToolActions: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: TextTransformModel
     var tint: Color
     var body: some View {
@@ -237,13 +252,14 @@ struct TextToolActions: View {
             Button { model.paste() } label: { Label("クリップボードから貼り付け", systemImage: "doc.on.clipboard") }
             Button("クリア") { model.input = ""; model.update() }.disabled(model.input.isEmpty)
             if model.busy { ProgressView().controlSize(.small) }
-            Text(model.status.isEmpty ? model.count : model.status).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            Text(model.status.isEmpty ? model.count : model.status).font(theme.font(11)).foregroundStyle(.secondary).lineLimit(2)
             Spacer()
-            Button { model.copy() } label: { Label("結果をコピー", systemImage: "doc.on.doc") }.buttonStyle(.borderedProminent).controlSize(.large).disabled(model.output.isEmpty || model.busy)
+            Button { model.copy() } label: { Label("結果をコピー", systemImage: "doc.on.doc") }.buttonStyle(ThemeButtonStyle(prominent: true)).controlSize(.large).disabled(model.output.isEmpty || model.busy)
         }
     }
 }
 struct ClipboardFormatterView: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: ClipboardFormatterModel
     var embedded = false
     private let tint = Color.teal
@@ -267,29 +283,29 @@ struct ClipboardFormatterView: View {
                                 Toggle("重複行を削除", isOn: $model.options.removeDuplicates)
                                 Toggle("連続スペースを1つに", isOn: $model.options.collapseSpaces)
                                 Button { model.input = NSPasteboard.general.string(forType: .string) ?? ""; model.parse() } label: { Label("貼り付け", systemImage: "doc.on.clipboard") }
-                            }.toggleStyle(.checkbox)
+                            }.toggleStyle(ThemeToggleStyle())
                         }.frame(width: 235)
                     }
                     if !model.table.rows.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack { ToolSectionLabel(title: "出力する列", symbol: "tablecells"); Text(model.detected).font(.caption).foregroundStyle(.secondary); Spacer() }
+                            HStack { ToolSectionLabel(title: "出力する列", symbol: "tablecells"); Text(model.detected).font(theme.font(11)).foregroundStyle(.secondary); Spacer() }
                             ScrollView(.horizontal) {
                                 HStack { ForEach(0..<model.table.width, id: \.self) { column in
-                                    Toggle("列 \(column + 1)", isOn: Binding(get: { model.columns.contains(column) }, set: { if $0 { model.columns.insert(column) } else { model.columns.remove(column) } })).toggleStyle(.button)
+                                    Toggle("列 \(column + 1)", isOn: Binding(get: { model.columns.contains(column) }, set: { if $0 { model.columns.insert(column) } else { model.columns.remove(column) } })).toggleStyle(ThemeToggleStyle(asButton: true))
                                 } }
                             }
-                            CSVGrid(model: model.table).frame(height: 180).clipShape(RoundedRectangle(cornerRadius: 10))
-                            Text("セルをダブルクリックで編集。列の順序は元の順を維持します。").font(.caption2).foregroundStyle(.tertiary)
+                            CSVGrid(model: model.table).frame(height: 180).classicBevel(sunken: true)
+                            Text("セルをダブルクリックで編集。列の順序は元の順を維持します。").font(theme.font(10)).foregroundStyle(.tertiary)
                         }
                     }
                     HStack(spacing: 20) {
-                        Picker("出力形式", selection: $model.options.format) { ForEach(ClipboardTable.Format.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 290)
-                        Picker("囲み文字", selection: $model.options.quote) { ForEach(ClipboardTable.Quote.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 220).disabled([.markdown, .sqlIn, .sqlValues].contains(model.options.format))
+                        ThemePicker("出力形式", selection: $model.options.format, options: ClipboardTable.Format.allCases.map { ($0, $0.rawValue) }).frame(width: 290)
+                        ThemePicker("囲み文字", selection: $model.options.quote, options: ClipboardTable.Quote.allCases.map { ($0, $0.rawValue) }).frame(width: 220).disabled([.markdown, .sqlIn, .sqlValues].contains(model.options.format))
                         Spacer()
-                        Button { model.copy() } label: { Label("結果をコピー", systemImage: "doc.on.doc") }.buttonStyle(.borderedProminent).disabled(model.output.isEmpty || model.busy)
+                        Button { model.copy() } label: { Label("結果をコピー", systemImage: "doc.on.doc") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.output.isEmpty || model.busy)
                     }
                     TextPane(title: "変換結果", symbol: "text.badge.checkmark", text: $model.output, editable: false, tint: tint).frame(height: 220)
-                    HStack { if model.busy { ProgressView().controlSize(.small) }; Text(model.status).font(.caption).foregroundStyle(.secondary); Spacer(); Text("\(model.output.count) 文字").font(.caption.monospacedDigit()).foregroundStyle(.tertiary) }
+                    HStack { if model.busy { ProgressView().controlSize(.small) }; Text(model.status).font(theme.font(11)).foregroundStyle(.secondary); Spacer(); Text("\(model.output.count) 文字").font(.caption.monospacedDigit()).foregroundStyle(.tertiary) }
                     ToolFootnote(text: "タブ→カンマ→スペース→1列の順で自動判定。SQLは文字列を生成するだけです。囲みなしのカンマ区切りはCSVの自動エスケープを行いません。入力は最大1MiB。")
                 }.padding(24)
             }

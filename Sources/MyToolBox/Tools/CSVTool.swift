@@ -92,6 +92,7 @@ import UniformTypeIdentifiers
     }
 }
 struct CSVToolView: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: CSVModel
     @State private var showPaste = false
     private var accent: Color { model.editable ? .orange : .blue }
@@ -103,42 +104,42 @@ struct CSVToolView: View {
                     Button { model.open() } label: { Label("CSVを開く", systemImage: "folder") }.controlSize(.large)
                     Button { withAnimation { showPaste.toggle() } } label: { Label("テキストを貼り付け", systemImage: "doc.on.clipboard") }.controlSize(.large)
                     Spacer()
-                    if model.dirty { Label("未保存", systemImage: "circle.fill").font(.caption).foregroundStyle(.orange) }
+                    if model.dirty { Label("未保存", systemImage: "circle.fill").font(theme.font(11)).foregroundStyle(.orange) }
                     if model.editable {
-                        Button { model.save(txt: false) } label: { Label("CSVで保存", systemImage: "square.and.arrow.down") }.buttonStyle(.borderedProminent).controlSize(.large).disabled(model.rows.isEmpty || model.busy)
+                        Button { model.save(txt: false) } label: { Label("CSVで保存", systemImage: "square.and.arrow.down") }.buttonStyle(ThemeButtonStyle(prominent: true)).controlSize(.large).disabled(model.rows.isEmpty || model.busy)
                         Menu { Button("TXTで保存…") { model.save(txt: true) } } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize().disabled(model.rows.isEmpty)
                     }
                 }.disabled(model.busy)
                 if showPaste {
                     ToolCard {
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack { ToolSectionLabel(title: "CSVテキスト", symbol: "text.alignleft"); Spacer(); Button("閉じる") { showPaste = false }.buttonStyle(.plain).font(.caption) }
-                            TextEditor(text: $model.input).font(.system(size: 12, design: .monospaced)).scrollContentBackground(.hidden).padding(8).frame(height: 95).background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
-                            HStack { Text("カンマ区切り・引用符・セル内改行に対応").font(.caption).foregroundStyle(.secondary); Spacer(); Button("表に反映") { model.load(text: model.input, label: "貼り付けデータ") }.buttonStyle(.borderedProminent).disabled(model.busy) }
+                            HStack { ToolSectionLabel(title: "CSVテキスト", symbol: "text.alignleft"); Spacer(); Button("閉じる") { showPaste = false }.buttonStyle(ThemeButtonStyle(plain: true)).font(theme.font(11)) }
+                            ToolTextEditor(text: $model.input).font(theme.font( 12, design: .monospaced)).scrollContentBackground(.hidden).padding(8).frame(height: 95).background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 8))
+                            HStack { Text("カンマ区切り・引用符・セル内改行に対応").font(theme.font(11)).foregroundStyle(.secondary); Spacer(); Button("表に反映") { model.load(text: model.input, label: "貼り付けデータ") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.busy) }
                         }
                     }
                 }
                 if model.rows.isEmpty {
                     VStack(spacing: 16) {
-                        Image(systemName: "tablecells.badge.ellipsis").font(.system(size: 54, weight: .ultraLight)).foregroundStyle(accent.opacity(0.75))
-                        Text("CSVをここにドロップ").font(.system(size: 21, weight: .semibold, design: .rounded))
-                        Text("ファイルを選ぶか、CSVテキストを貼り付けて始めましょう。\nデータはこのMacの中だけで処理します。").font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineSpacing(5)
-                        Button("ファイルを選ぶ…") { model.open() }.buttonStyle(.borderedProminent).controlSize(.large).disabled(model.busy)
-                        Text("UTF-8 / Shift_JIS  ·  最大8 MiB").font(.caption).foregroundStyle(.tertiary)
+                        Image(systemName: "tablecells.badge.ellipsis").font(theme.font( 54, weight: .ultraLight)).foregroundStyle(accent.opacity(0.75))
+                        Text("CSVをここにドロップ").font(theme.font( 21, weight: .semibold, design: .rounded))
+                        Text("ファイルを選ぶか、CSVテキストを貼り付けて始めましょう。\nデータはこのMacの中だけで処理します。").font(theme.font( 13)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineSpacing(5)
+                        Button("ファイルを選ぶ…") { model.open() }.buttonStyle(ThemeButtonStyle(prominent: true)).controlSize(.large).disabled(model.busy)
+                        Text("UTF-8 / Shift_JIS  ·  最大8 MiB").font(theme.font(11)).foregroundStyle(.tertiary)
                     }.frame(maxWidth: .infinity, maxHeight: .infinity).frame(minHeight: 260)
-                        .background(accent.opacity(0.035), in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(accent.opacity(0.2), style: StrokeStyle(lineWidth: 1, dash: [6, 5])))
+                        .background(accent.opacity(0.035), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 16))
+                        .overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 16).strokeBorder(accent.opacity(0.2), style: StrokeStyle(lineWidth: 1, dash: [6, 5])))
                 } else {
                     HStack(spacing: 12) {
-                        HStack { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("すべての列から検索", text: $model.search).textFieldStyle(.plain); if !model.search.isEmpty { Button { model.search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).foregroundStyle(.secondary) } }.padding(9).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                        HStack { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("すべての列から検索", text: $model.search).textFieldStyle(.plain); if !model.search.isEmpty { Button { model.search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(ThemeButtonStyle(plain: true)).foregroundStyle(.secondary) } }.padding(9).background(theme.surfaceHigh, in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 8))
                         Button { model.fitRevision += 1 } label: { Label("列幅を合わせる", systemImage: "arrow.left.and.right") }
-                        Toggle("省略記号", isOn: $model.ellipsis).toggleStyle(.checkbox).font(.caption)
+                        Toggle("省略記号", isOn: $model.ellipsis).toggleStyle(ThemeToggleStyle()).font(theme.font(11))
                     }
                     VStack(spacing: 0) {
-                        HStack { ToolSectionLabel(title: "データ", symbol: "tablecells"); Text("\(model.indices.count) 行 × \(model.width) 列").font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("見出しで並べ替え / 境界で幅を調整").font(.caption2).foregroundStyle(.tertiary) }.padding(12)
+                        HStack { ToolSectionLabel(title: "データ", symbol: "tablecells"); Text("\(model.indices.count) 行 × \(model.width) 列").font(theme.font( 11, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("見出しで並べ替え / 境界で幅を調整").font(theme.font(10)).foregroundStyle(.tertiary) }.padding(12)
                         Divider()
                         CSVGrid(model: model).frame(height: 320)
-                    }.background(Color(nsColor: .controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.08)))
+                    }.background(theme.surfaceHigh, in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 12)).overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 12).strokeBorder(.primary.opacity(0.08)))
                     if model.editable {
                         HStack(spacing: 10) {
                             Button { model.finishEditing(); model.rows.append(Array(repeating: "", count: model.width)); model.dirty = true } label: { Label("行を追加", systemImage: "plus") }.disabled(model.rows.count >= 20_000 || (model.rows.count + 1) * model.width > 200_000)
@@ -146,22 +147,22 @@ struct CSVToolView: View {
                             Divider().frame(height: 18)
                             Button("選択行を削除") { model.finishEditing(); model.rows.remove(at: model.selectedRow); model.selectedRow = -1; model.dirty = true }.disabled(!model.rows.indices.contains(model.selectedRow) || model.rows.count <= 1)
                             Spacer()
-                            Picker("編集列", selection: $model.selectedColumn) { ForEach(0..<model.width, id: \.self) { Text("列 \($0 + 1)").tag($0) } }.frame(width: 150)
+                            ThemePicker("編集列", selection: $model.selectedColumn, options: (0..<model.width).map { ($0, "列 \($0 + 1)") }).frame(width: 150)
                             Button("列を削除") { model.finishEditing(); model.sortColumn = -1; let c = model.selectedColumn; model.rows = model.rows.map { var row = $0; row.remove(at: c); return row }; model.selectedColumn = 0; model.dirty = true }.disabled(model.width <= 1)
                         }.controlSize(.small)
                         if model.rows.indices.contains(model.selectedRow), model.width > model.selectedColumn {
                             VStack(alignment: .leading, spacing: 6) {
                                 ToolSectionLabel(title: "セルを編集 · \(model.selectedRow + 1)行 / \(model.selectedColumn + 1)列（改行可）", symbol: "pencil.line")
-                                TextEditor(text: Binding(get: { model.rows.indices.contains(model.selectedRow) && model.rows[model.selectedRow].indices.contains(model.selectedColumn) ? model.rows[model.selectedRow][model.selectedColumn] : "" }, set: { model.edit(row: model.selectedRow, column: model.selectedColumn, value: $0) })).font(.system(size: 12, design: .monospaced)).scrollContentBackground(.hidden).padding(8).frame(height: 64).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                                ToolTextEditor(text: Binding(get: { model.rows.indices.contains(model.selectedRow) && model.rows[model.selectedRow].indices.contains(model.selectedColumn) ? model.rows[model.selectedRow][model.selectedColumn] : "" }, set: { model.edit(row: model.selectedRow, column: model.selectedColumn, value: $0) })).font(theme.font( 12, design: .monospaced)).scrollContentBackground(.hidden).padding(8).frame(height: 64).background(theme.surfaceHigh, in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 8))
                             }
                         }
                     }
                 }
                 HStack(spacing: 8) {
                     if model.busy { ProgressView().controlSize(.small) } else { Image(systemName: "doc.text").foregroundStyle(.tertiary) }
-                    Text(model.status).font(.caption).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
+                    Text(model.status).font(theme.font(11)).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
                     Spacer()
-                    Text(model.editable ? "保存形式 UTF-8 / BOM" : "先頭行は列見出し").font(.caption2).foregroundStyle(.tertiary)
+                    Text(model.editable ? "保存形式 UTF-8 / BOM" : "先頭行は列見出し").font(theme.font(10)).foregroundStyle(.tertiary)
                 }.frame(minHeight: 22)
             }.padding(22)
             }
@@ -180,17 +181,31 @@ struct CSVToolView: View {
     }
 }
 struct CSVGrid: NSViewRepresentable {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: CSVModel
     func makeCoordinator() -> Coordinator { Coordinator(model) }
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView(); scroll.hasVerticalScroller = true; scroll.hasHorizontalScroller = true
-        let table = NSTableView(); table.delegate = context.coordinator; table.dataSource = context.coordinator
+        let table = ThemeTableView(); table.delegate = context.coordinator; table.dataSource = context.coordinator
         table.target = context.coordinator; table.doubleAction = #selector(Coordinator.beginCellEdit(_:))
         table.usesAlternatingRowBackgroundColors = true; table.rowHeight = 26; table.columnAutoresizingStyle = .noColumnAutoresizing
         scroll.documentView = table; return scroll
     }
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let table = scroll.documentView as? NSTableView else { return }
+        if let themedTable = table as? ThemeTableView {
+            themedTable.theme = theme
+            themedTable.needsDisplay = true
+        }
+        scroll.backgroundColor = theme.classic ? .white : NSColor(theme.surfaceHigh)
+        scroll.scrollerStyle = theme.classic ? .legacy : .overlay
+        table.backgroundColor = theme.classic ? .white : NSColor(theme.surfaceHigh)
+        table.usesAlternatingRowBackgroundColors = !theme.classic
+        context.coordinator.theme = theme
+        for column in table.tableColumns {
+            if theme.classic, !(column.headerCell is ClassicHeaderCell) { column.headerCell = ClassicHeaderCell(textCell: column.title) }
+            else if !theme.classic, column.headerCell is ClassicHeaderCell { column.headerCell = NSTableHeaderCell(textCell: column.title) }
+        }
         context.coordinator.reloading = true
         defer { context.coordinator.reloading = false }
         let mapping = model.indices
@@ -199,7 +214,7 @@ struct CSVGrid: NSViewRepresentable {
         context.coordinator.mapping = mapping
         if table.tableColumns.count != model.width {
             for c in table.tableColumns { table.removeTableColumn(c) }
-            for index in 0..<model.width { let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(String(index))); column.width = 150; column.minWidth = 48; table.addTableColumn(column) }
+            for index in 0..<model.width { let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(String(index))); if theme.classic { column.headerCell = ClassicHeaderCell(textCell: "") }; column.width = 150; column.minWidth = 48; table.addTableColumn(column) }
         }
         for (i, column) in table.tableColumns.enumerated() {
             let title = model.editable ? "列 \(i + 1)" : model.rows.first?[i] ?? ""
@@ -211,12 +226,14 @@ struct CSVGrid: NSViewRepresentable {
             for column in table.tableColumns { column.width = width }
         }
         if needsReload { table.reloadData() }
+        context.coordinator.updateCellColors(table)
         if let row = context.coordinator.mapping.firstIndex(of: model.selectedRow) {
             if table.selectedRow != row { table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false) }
         } else if table.selectedRow != -1 { table.deselectAll(nil) }
     }
     final class Field: NSTextField { var row = 0; var column = 0 }
     final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate {
+        var theme = AppTheme()
         let model: CSVModel; var mapping: [Int] = []; var reloading = false; var fitRevision = 0
         var lastRows: [[String]] = []; var lastEllipsis = true
         init(_ model: CSVModel) { self.model = model }
@@ -237,7 +254,7 @@ struct CSVGrid: NSViewRepresentable {
             let field = Field()
             field.setAccessibilityLabel("\(index + 1)行・\(c + 1)列")
             field.stringValue = model.rows[index][c]; field.row = index; field.column = c
-            field.isEditable = model.editable; field.isSelectable = true; field.isBordered = false; field.backgroundColor = .clear; field.delegate = self
+            field.isEditable = model.editable; field.isSelectable = true; field.isBordered = false; field.backgroundColor = .clear; field.textColor = theme.classic && tableView.isRowSelected(row) ? .white : NSColor(theme.text); field.delegate = self
             field.lineBreakMode = model.ellipsis ? .byTruncatingTail : .byClipping; field.toolTip = field.stringValue
             return field
         }
@@ -251,8 +268,19 @@ struct CSVGrid: NSViewRepresentable {
             model.edit(row: field.row, column: field.column, value: field.stringValue)
         }
         func tableView(_ tableView: NSTableView, didClick tableColumn: NSTableColumn) { if let c = Int(tableColumn.identifier.rawValue) { model.sort(c) } }
+        func updateCellColors(_ table: NSTableView) {
+            let visible = table.rows(in: table.visibleRect)
+            guard visible.location != NSNotFound else { return }
+            for row in visible.location..<min(table.numberOfRows, NSMaxRange(visible)) {
+                for column in 0..<table.numberOfColumns {
+                    (table.view(atColumn: column, row: row, makeIfNecessary: false) as? Field)?.textColor = theme.classic && table.isRowSelected(row) ? .white : NSColor(theme.text)
+                }
+            }
+        }
         func tableViewSelectionDidChange(_ notification: Notification) {
-            guard !reloading, let table = notification.object as? NSTableView else { return }
+            guard let table = notification.object as? NSTableView else { return }
+            updateCellColors(table)
+            guard !reloading else { return }
             let value = mapping.indices.contains(table.selectedRow) ? mapping[table.selectedRow] : -1
             if model.selectedRow != value { model.selectedRow = value }
         }

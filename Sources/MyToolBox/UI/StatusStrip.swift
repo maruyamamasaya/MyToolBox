@@ -7,6 +7,7 @@ import AppKit
         var topSeverity = MenuSeverity.normal; var bottomSeverity = MenuSeverity.normal
         var singleLine = false
         var memoryIcon = false
+        var rightAligned = false
     }
     private var cells: [Cell] = []
     private var compact = false
@@ -91,6 +92,9 @@ import AppKit
             if id == "network" {
                 let received = text(id, "受信速度"); let sent = text(id, "送信速度")
                 var cell = makeCell("↓" + received, "↑" + sent)
+                // Reserve room across digit/unit changes, plus a small breathing space.
+                cell.width = max(cell.width, makeCell("↓99.9MB/s", "↑99.9MB/s").width + 3)
+                cell.rightAligned = true
                 cell.topSeverity = received.hasSuffix("MB/s") ? .warning : .normal
                 cell.bottomSeverity = sent.hasSuffix("MB/s") ? .warning : .normal
                 return [cell]
@@ -148,7 +152,8 @@ import AppKit
                 if severity == .warning { textAttributes[.foregroundColor] = NSColor(calibratedRed: 1, green: 0.89, blue: 0.4, alpha: 1) }
                 if severity == .critical { textAttributes[.foregroundColor] = NSColor(calibratedRed: 1, green: 0.35, blue: 0.35, alpha: dimmed ? 0.6 : 1) }
                 let size = (text as NSString).size(withAttributes: attributes)
-                (text as NSString).draw(at: NSPoint(x: x + (cell.width - size.width) / 2, y: y), withAttributes: textAttributes)
+                let textX = cell.rightAligned ? cell.width - size.width - (compact ? 4 : 6) : (cell.width - size.width) / 2
+                (text as NSString).draw(at: NSPoint(x: x + textX, y: y), withAttributes: textAttributes)
             }
             x += cell.width
         }

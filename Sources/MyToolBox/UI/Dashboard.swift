@@ -2,16 +2,16 @@ import SwiftUI
 import Charts
 
 struct Dashboard: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var store: MonitorStore
     var openTools: (() -> Void)? = nil
-    @Environment(\.colorScheme) private var colorScheme
     private let titles = ["cpu": "CPU", "gpu": "GPU", "memory": "Memory", "network": "Network", "storage": "Storage", "battery": "Battery", "sensors": "Sensors"]
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 if store.selected != "overview" {
                     Button { store.selected = "overview" } label: { Label("戻る", systemImage: "chevron.left") }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ThemeButtonStyle(plain: true))
                 }
                 Text(store.selected == "overview" ? "システムモニター" : store.selected == "settings" ? "設定" : titles[store.selected] ?? "詳細")
                     .font(.headline)
@@ -27,9 +27,9 @@ struct Dashboard: View {
                 if let openTools { Button(action: openTools) { Label("ツール一覧", systemImage: "square.grid.2x2") } }
                 Button { store.selected = "settings"; store.refreshLoginStatus() } label: { Label("設定", systemImage: "gearshape") }
                 Spacer()
-                Button("終了") { NSApp.terminate(nil) }
-            }.buttonStyle(.plain).font(.caption).padding(12)
-        }.frame(width: 390, height: 620).background(Color(nsColor: .windowBackgroundColor))
+                Text("監視はバックグラウンドで継続").font(theme.font(9)).foregroundStyle(.secondary)
+            }.buttonStyle(ThemeButtonStyle(plain: true)).font(theme.font(11)).padding(12)
+        }.frame(width: 390, height: 620)
     }
     private func metric(_ id: String, _ key: String) -> Metric {
         store.snapshot?.metric(id, key) ?? Metric(store.snapshot == nil ? .waiting : .unavailable, store.sleeping ? "スリープ中" : "取得待ち／未取得")
@@ -41,13 +41,13 @@ struct Dashboard: View {
     }
     private func color(_ id: String) -> Color {
         switch store.alertLevels[id] ?? .normal {
-        case .normal: return .green
-        case .warning: return .yellow
+        case .normal: return theme.classic ? Color(hex: 0x008000) : .green
+        case .warning: return theme.classic ? Color(hex: 0x806000) : .yellow
         case .critical: return .red
         }
     }
     private func caption(_ text: String) -> some View {
-        Text(text).font(.caption).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(theme.font(11)).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
     }
     @ViewBuilder private func meter(_ id: String, _ key: String) -> some View {
         if let v = metric(id, key).value {
@@ -60,15 +60,16 @@ struct Dashboard: View {
                 HStack {
                     Label(titles[id] ?? id, systemImage: symbol).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Spacer(minLength: 2)
-                    if store.alertLevels[id] == .critical { Text("要確認").font(.caption2).foregroundStyle(.red) }
-                    else if store.alertLevels[id] == .warning { Text("注意").font(.caption2).foregroundStyle(.yellow) }
-                    Image(systemName: "chevron.right").font(.system(size: 8)).foregroundStyle(.tertiary)
+                    if store.alertLevels[id] == .critical { Text("要確認").font(theme.font(10)).foregroundStyle(.red) }
+                    else if store.alertLevels[id] == .warning { Text("注意").font(theme.font(10)).foregroundStyle(.yellow) }
+                    Image(systemName: "chevron.right").font(theme.font( 8)).foregroundStyle(.tertiary)
                 }
                 content()
             }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
-                .background(Color(white: colorScheme == .dark ? 0.17 : 0.96), in: RoundedRectangle(cornerRadius: 12))
-                .contentShape(RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain).accessibilityHint("クリックで詳細を表示")
+                .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 12))
+                .classicBevel()
+                .contentShape(RoundedRectangle(cornerRadius: theme.classic ? 0 : 12))
+        }.buttonStyle(ThemeButtonStyle(plain: true)).accessibilityHint("クリックで詳細を表示")
     }
     private var overview: some View {
         ScrollView {
@@ -95,7 +96,7 @@ struct Dashboard: View {
                         Text("↓ " + value("network", "受信速度"))
                         Spacer()
                         Text("↑ " + value("network", "送信速度"))
-                    }.font(.system(size: 15, weight: .semibold, design: .monospaced)).minimumScaleFactor(0.75).lineLimit(1)
+                    }.font(theme.font( 15, weight: .semibold, design: .monospaced)).minimumScaleFactor(0.75).lineLimit(1)
                     historyChart("network", miniature: true)
                     caption(store.snapshot?.readings.first(where: { $0.id == "network" })?.notes.first ?? "接続情報を取得待ち")
                 }
@@ -137,7 +138,7 @@ struct Dashboard: View {
         let end = last?.date ?? Date()
         let lastUptime = last?.uptime ?? 0
         return VStack(alignment: .leading, spacing: 2) {
-            if !miniature { Text("直近60秒 · \(id == "network" ? "B/s" : "%")").font(.caption).foregroundStyle(.secondary) }
+            if !miniature { Text("直近60秒 · \(id == "network" ? "B/s" : "%")").font(theme.font(11)).foregroundStyle(.secondary) }
             Chart {
                 ForEach(store.history.points) { point in
                     ForEach(keys, id: \.self) { key in
@@ -170,12 +171,12 @@ struct Dashboard: View {
                         let metric = reading.metrics[name]!
                         VStack(alignment: .leading, spacing: 4) {
                             HStack { Text(name); Spacer(); Text(MetricFormat.string(metric, preferences: store.preferences)).font(.body.monospacedDigit()).foregroundStyle(metric.value == nil ? .secondary : .primary) }
-                            if !metric.reason.isEmpty { Text(metric.reason).font(.caption).foregroundStyle(.secondary) }
+                            if !metric.reason.isEmpty { Text(metric.reason).font(theme.font(11)).foregroundStyle(.secondary) }
                         }
                         Divider()
                     }
-                    ForEach(reading.notes, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
-                    if ["battery", "sensors"].contains(reading.id) { Text("この項目は5秒周期。表示時刻より最大5秒前の取得値です。").font(.caption).foregroundStyle(.secondary) }
+                    ForEach(reading.notes, id: \.self) { Text($0).font(theme.font(11)).foregroundStyle(.secondary).textSelection(.enabled) }
+                    if ["battery", "sensors"].contains(reading.id) { Text("この項目は5秒周期。表示時刻より最大5秒前の取得値です。").font(theme.font(11)).foregroundStyle(.secondary) }
                 } else { Text(store.sleeping ? "スリープ中：取得停止" : "初回サンプル待ち") }
             }.padding(14)
         }

@@ -1,17 +1,15 @@
 import SwiftUI
 struct BusinessDaysView: View {
-    var holidayURL: URL? = Bundle.main.url(forResource: "JapaneseHolidays", withExtension: "json")
-    @State private var start = Date()
-    @State private var end = Date()
-    @State private var customDate = Date()
-    @State private var customName = ""
-    @State private var custom: [String: String] = [:]
-    @State private var format = 0
-    @State private var status = ""
+    @Environment(\.appTheme) private var theme
+    @ObservedObject var model: CalendarWorkspaceModel
+    var embedded = false
     private let calendar = BusinessDays.calendar
-    private var source: Result<BusinessDays, Error> {
-        Result { guard let url = holidayURL else { throw ToolFailure.message("祝日データが見つかりません") }; return try BusinessDays(data: Data(contentsOf: url)) }
-    }
+    private var start: Date { get { model.start } nonmutating set { model.start = newValue } }
+    private var end: Date { get { model.end } nonmutating set { model.end = newValue } }
+    private var format: Int { get { model.format } nonmutating set { model.format = newValue } }
+    private var status: String { get { model.status } nonmutating set { model.status = newValue } }
+    private var custom: [String: String] { model.custom }
+    private var source: Result<BusinessDays, Error> { model.source }
     private var result: Result<BusinessDays.Result, Error> { source.flatMap { model in Result { try model.calculate(start: start, end: end, custom: Set(custom.keys)) } } }
     private var output: String {
         guard let counts = try? result.get() else { return "" }
@@ -26,16 +24,22 @@ struct BusinessDaysView: View {
         }
     }
     var body: some View {
-        ToolPage("営業日計算", subtitle: "日付を選んで、働く日をひと目で。", symbol: "calendar", tint: .mint) {
+        Group {
+            if embedded { content }
+            else { ToolPage("営業日計算", subtitle: "日付を選んで、働く日をひと目で。", symbol: "calendar", tint: .mint) { content } }
+        }.environment(\.calendar, calendar).environment(\.timeZone, calendar.timeZone).frame(minWidth: 740, minHeight: embedded ? 0 : 740)
+            .onChange(of: start) { _, _ in status = "" }.onChange(of: end) { _, _ in status = "" }.onChange(of: format) { _, _ in status = "" }.onChange(of: model.custom) { _, _ in status = "" }
+    }
+    private var content: some View {
             ScrollView {
                 VStack(spacing: 18) {
                     HStack(spacing: 14) {
-                        dateCard("開始日", selection: $start, symbol: "calendar.badge.plus")
+                        dateCard("開始日", selection: $model.start, symbol: "calendar.badge.plus")
                         Image(systemName: "arrow.right").foregroundStyle(.tertiary)
-                        dateCard("終了日", selection: $end, symbol: "calendar.badge.checkmark")
+                        dateCard("終了日", selection: $model.end, symbol: "calendar.badge.checkmark")
                     }
                     HStack(spacing: 8) {
-                        Text("クイック選択").font(.caption).foregroundStyle(.secondary)
+                        Text("クイック選択").font(theme.font(11)).foregroundStyle(.secondary)
                         Button("今日から1週間") { range(7) }
                         Button("今日から30日") { range(30) }
                         Button("今月") { start = calendar.dateInterval(of: .month, for: Date())!.start; end = calendar.date(byAdding: .day, value: -1, to: calendar.dateInterval(of: .month, for: Date())!.end)! }
@@ -45,8 +49,8 @@ struct BusinessDaysView: View {
                     case .success(let r):
                         HStack(spacing: 24) {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("営業日").font(.system(size: 13, weight: .semibold)).foregroundStyle(.mint)
-                                HStack(alignment: .firstTextBaseline, spacing: 6) { Text("\(r.business)").font(.system(size: 58, weight: .semibold, design: .rounded)).monospacedDigit(); Text("日").font(.title3).foregroundStyle(.secondary) }
+                                Text("営業日").font(theme.font( 13, weight: .semibold)).foregroundStyle(theme.classic ? theme.accent : .mint)
+                                HStack(alignment: .firstTextBaseline, spacing: 6) { Text("\(r.business)").font(theme.font( 58, weight: .semibold, design: .rounded)).monospacedDigit(); Text("日").font(theme.font(theme.classic ? 12 : 20)).foregroundStyle(.secondary) }
                             }.frame(minWidth: 140, alignment: .leading)
                             Divider().frame(height: 66)
                             count("期間", r.total, symbol: "calendar")
@@ -54,40 +58,31 @@ struct BusinessDaysView: View {
                             count("平日の祝日・休日", r.holidays, symbol: "flag")
                             Spacer(minLength: 0)
                         }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.mint.opacity(0.09), in: RoundedRectangle(cornerRadius: 18))
-                            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.mint.opacity(0.18)))
+                            .background(Color.mint.opacity(0.09), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 18))
+                            .overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 18).strokeBorder(Color.mint.opacity(0.18)))
                     case .failure(let e):
-                        Label(e.localizedDescription, systemImage: "exclamationmark.circle").foregroundStyle(.orange).frame(maxWidth: .infinity, alignment: .leading).padding(20).background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+                        Label(e.localizedDescription, systemImage: "exclamationmark.circle").foregroundStyle(.orange).frame(maxWidth: .infinity, alignment: .leading).padding(20).background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 16))
                     }
                     ToolCard {
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack { ToolSectionLabel(title: "期間をコピー", symbol: "doc.on.doc"); Spacer(); Picker("形式", selection: $format) { ForEach(Array(["改行＋〜", "1行", "曜日つき", "ハイフン", "日数つき"].enumerated()), id: \.offset) { Text($0.element).tag($0.offset) } }.labelsHidden().frame(width: 140) }
-                            HStack { Text(output.isEmpty ? "有効な期間を選択してください" : output).font(.system(size: 14, design: .monospaced)).textSelection(.enabled); Spacer(); Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(output, forType: .string); status = "コピーしました" } label: { Label(status.isEmpty ? "コピー" : status, systemImage: "doc.on.doc") }.buttonStyle(.borderedProminent).disabled((try? result.get()) == nil) }
+                            HStack { ToolSectionLabel(title: "期間をコピー", symbol: "doc.on.doc"); Spacer(); ThemePicker("形式", selection: $model.format, options: ["改行＋〜", "1行", "曜日つき", "ハイフン", "日数つき"].enumerated().map { ($0.offset, $0.element) }).labelsHidden().frame(width: 140) }
+                            HStack { Text(output.isEmpty ? "有効な期間を選択してください" : output).font(theme.font( 14, design: .monospaced)).textSelection(.enabled); Spacer(); Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(output, forType: .string); status = "コピーしました" } label: { Label(status.isEmpty ? "コピー" : status, systemImage: "doc.on.doc") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled((try? result.get()) == nil) }
                         }
                     }
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            ToolSectionLabel(title: "独自の休日", symbol: "calendar.badge.exclamationmark")
-                            HStack { DatePicker("日付", selection: $customDate, displayedComponents: .date).labelsHidden(); TextField("会社の休業日など", text: $customName).textFieldStyle(.roundedBorder); Button { custom[BusinessDays.key(customDate)] = customName; customName = "" } label: { Label("追加", systemImage: "plus") }.disabled(customName.trimmingCharacters(in: .whitespaces).isEmpty) }
-                            ForEach(custom.keys.sorted(), id: \.self) { day in HStack { Text(day).monospacedDigit().foregroundStyle(.secondary); Text(custom[day]!); Spacer(); Button { custom[day] = nil } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain).accessibilityLabel("\(day)の休日を削除") } }
-                            Text("追加した休日は、このウィンドウを閉じるまで有効です。").font(.caption).foregroundStyle(.tertiary)
-                        }
-                    }
+                    CalendarHolidayEditor(model: model)
                     ToolFootnote(text: "開始日・終了日を含みます。土日と重なる祝日は二重に数えません。内閣府の公表済み祝日（1955〜2027年・2026-10-15取得）を同梱。")
                 }.padding(24)
             }
-        }.environment(\.calendar, calendar).environment(\.timeZone, calendar.timeZone).frame(minWidth: 740, minHeight: 740)
-        .onChange(of: start) { _, _ in status = "" }.onChange(of: end) { _, _ in status = "" }.onChange(of: format) { _, _ in status = "" }
     }
     private func dateCard(_ title: String, selection: Binding<Date>, symbol: String) -> some View {
         ToolCard {
             VStack(alignment: .leading, spacing: 14) {
                 ToolSectionLabel(title: title, symbol: symbol)
-                DatePicker(title, selection: selection, displayedComponents: .date).datePickerStyle(.field).labelsHidden().font(.title2)
-                ToolCalendar(selection: selection, holidays: ((try? source.get().holidays) ?? [:]).merging(custom) { _, new in new })
+                DatePicker(title, selection: selection, displayedComponents: .date).datePickerStyle(.field).labelsHidden().font(theme.font(theme.classic ? 13 : 22))
+                ToolCalendar(selection: selection, holidays: model.holidays)
             }
         }
     }
     private func range(_ count: Int) { start = Date(); end = calendar.date(byAdding: .day, value: count - 1, to: start)! }
-    private func count(_ label: String, _ value: Int, symbol: String) -> some View { VStack(alignment: .leading, spacing: 10) { Label(label, systemImage: symbol).font(.caption).foregroundStyle(.secondary); Text("\(value)").font(.system(size: 27, weight: .medium, design: .rounded)).monospacedDigit() }.frame(maxWidth: .infinity, alignment: .leading) }
+    private func count(_ label: String, _ value: Int, symbol: String) -> some View { VStack(alignment: .leading, spacing: 10) { Label(label, systemImage: symbol).font(theme.font(11)).foregroundStyle(.secondary); Text("\(value)").font(theme.font( 27, weight: .medium, design: .rounded)).monospacedDigit() }.frame(maxWidth: .infinity, alignment: .leading) }
 }

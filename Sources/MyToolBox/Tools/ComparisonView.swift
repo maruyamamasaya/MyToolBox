@@ -42,23 +42,24 @@ private actor ComparisonWorker {
     func stop() { task?.cancel() }
 }
 struct ComparisonView: View {
+    @Environment(\.appTheme) private var theme
     @ObservedObject var model: ComparisonModel
     private let tint = Color(red: 0.23, green: 0.43, blue: 0.94)
     var body: some View {
         ToolPage("比較ツール", subtitle: "文章の変更と、リストの違いをひと目で。", symbol: "rectangle.split.2x1", tint: tint) {
             ScrollView {
                 VStack(spacing: 18) {
-                    Picker("比較モード", selection: $model.mode) { ForEach(ComparisonModel.Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).frame(width: 360)
+                    ThemePicker("比較モード", selection: $model.mode, options: ComparisonModel.Mode.allCases.map { ($0, $0.rawValue) }, tabs: true).frame(width: 360)
                     HStack(spacing: 16) {
                         TextPane(title: "左 / A", symbol: "a.square", text: $model.left, tint: .orange)
                         TextPane(title: "右 / B", symbol: "b.square", text: $model.right, tint: .teal)
                     }.frame(height: 220)
                     HStack(spacing: 12) {
-                        if model.mode == .diff { Button { model.compare() } label: { Label("比較する", systemImage: "arrow.left.arrow.right") }.buttonStyle(.borderedProminent).disabled(model.busy) }
+                        if model.mode == .diff { Button { model.compare() } label: { Label("比較する", systemImage: "arrow.left.arrow.right") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.busy) }
                         Button { model.swap() } label: { Label("左右を入れ替え", systemImage: "arrow.triangle.swap") }
                         Button("クリア") { model.clear() }.disabled(model.left.isEmpty && model.right.isEmpty)
                         if model.busy { ProgressView().controlSize(.small) }
-                        Text(model.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                        Text(model.status).font(theme.font(11)).foregroundStyle(.secondary).textSelection(.enabled)
                         Spacer()
                     }
                     if model.mode == .diff { diffResults }
@@ -79,7 +80,7 @@ struct ComparisonView: View {
                 badge("削除", result.removed, .red)
                 badge("追加", result.added, .green)
                 Spacer()
-                Toggle("行を折り返す", isOn: $model.wrap).toggleStyle(.checkbox)
+                Toggle("行を折り返す", isOn: $model.wrap).toggleStyle(ThemeToggleStyle())
                 Button { model.copy(result.plainText) } label: { Label("比較結果をコピー", systemImage: "doc.on.doc") }.disabled(result.rows.isEmpty)
             }
             if result.rows.isEmpty { ContentUnavailableView("入力が空です", systemImage: "doc.text.magnifyingglass", description: Text("左右のテキストを入力してください")) }
@@ -98,7 +99,7 @@ struct ComparisonView: View {
                     Toggle("空行を除外", isOn: $model.options.ignoreEmpty)
                     Spacer()
                     if let result = model.lists { Text("A \(result.leftCount) 件 / B \(result.rightCount) 件").font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
-                }.toggleStyle(.checkbox)
+                }.toggleStyle(ThemeToggleStyle())
             }
             HStack(spacing: 16) {
                 listCard("共通", values: model.lists?.common ?? [], symbol: "link", color: .green)
@@ -110,20 +111,21 @@ struct ComparisonView: View {
     private func listCard(_ title: String, values: [String], symbol: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Label(title, systemImage: symbol).font(.system(size: 13, weight: .semibold)).foregroundStyle(color)
+                Label(title, systemImage: symbol).font(theme.font( 13, weight: .semibold)).foregroundStyle(color)
                 Text("\(values.count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 Spacer()
                 Button { model.copy(values.joined(separator: "\n")) } label: { Image(systemName: "doc.on.doc") }.disabled(values.isEmpty || model.busy).accessibilityLabel(title + "をコピー")
             }.padding(13)
             Divider().opacity(0.5)
             ToolTextEditor(text: .constant(values.joined(separator: "\n")), editable: false, label: title + "の項目")
-        }.background(color.opacity(0.04), in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(color.opacity(0.2)))
+        }.background(color.opacity(0.04), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 14)).overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 14).strokeBorder(color.opacity(0.2)))
     }
     private func badge(_ title: String, _ count: Int, _ color: Color) -> some View {
-        HStack(spacing: 7) { Circle().fill(color).frame(width: 6,height: 6); Text(title); Text("\(count)").bold().monospacedDigit() }.font(.caption).padding(.horizontal, 11).padding(.vertical, 8).background(color.opacity(0.08), in: Capsule())
+        HStack(spacing: 7) { Circle().fill(color).frame(width: 6,height: 6); Text(title); Text("\(count)").bold().monospacedDigit() }.font(theme.font(11)).padding(.horizontal, 11).padding(.vertical, 8).background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 50))
     }
 }
 private struct DiffGrid: View {
+    @Environment(\.appTheme) private var theme
     let rows: [TextComparison.Row]
     let wrap: Bool
     var body: some View {
@@ -131,30 +133,30 @@ private struct DiffGrid: View {
             let width = wrap ? max(160, (geometry.size.width - 170) / 2) : max((geometry.size.width - 170) / 2, CGFloat(rows.map { max(($0.left ?? "").utf16.count, ($0.right ?? "").utf16.count) }.max() ?? 1) * 14 + 18)
             ScrollView([.vertical, .horizontal]) {
                 LazyVStack(spacing: 0) {
-                    HStack(spacing: 0) { Text("左 / A").frame(width: width + 52, alignment: .leading); Text("右 / B").frame(width: width + 52, alignment: .leading); Text("状態").frame(width: 64) }.font(.caption.bold()).padding(.vertical, 10).background(.primary.opacity(0.04))
+                    HStack(spacing: 0) { Text("左 / A").frame(width: width + 52, alignment: .leading); Text("右 / B").frame(width: width + 52, alignment: .leading); Text("状態").frame(width: 64) }.font(theme.font(11, weight: .bold)).padding(.vertical, 10).background(.primary.opacity(0.04))
                     ForEach(rows) { row in
                         HStack(alignment: .top, spacing: 0) {
                             cell(row.left, number: row.leftNumber, span: row.leftSpan, width: width, color: row.kind == .same ? .clear : .red)
                             Divider()
                             cell(row.right, number: row.rightNumber, span: row.rightSpan, width: width, color: row.kind == .same ? .clear : .green)
-                            Text(row.kind.rawValue).font(.system(size: 10, weight: .medium)).foregroundStyle(color(row.kind)).frame(width: 64, alignment: .center).padding(.top, 12)
+                            Text(row.kind.rawValue).font(theme.font( 10, weight: .medium)).foregroundStyle(color(row.kind)).frame(width: 64, alignment: .center).padding(.top, 12)
                         }.background(row.id.isMultiple(of: 2) ? Color.primary.opacity(0.015) : .clear)
                         Divider().opacity(0.35)
                     }
                 }.frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
             }
-        }.background(Color(nsColor: .controlBackgroundColor).opacity(0.5)).clipShape(RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.primary.opacity(0.08)))
+        }.background(theme.surfaceHigh.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius: theme.classic ? 0 : 14)).overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 14).strokeBorder(.primary.opacity(0.08))).classicBevel(sunken: true)
     }
     private func color(_ kind: TextComparison.Kind) -> Color {
         switch kind { case .same: return .secondary; case .changed: return .orange; case .removed: return .red; case .added: return .green }
     }
     private func cell(_ text: String?, number: Int?, span: TextComparison.Span?, width: CGFloat, color: Color) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            Text(number.map(String.init) ?? "—").font(.system(size: 10, design: .monospaced)).foregroundStyle(.tertiary).frame(width: 32, alignment: .trailing).padding(.top, 12)
+            Text(number.map(String.init) ?? "—").font(theme.font( 10, design: .monospaced)).foregroundStyle(.tertiary).frame(width: 32, alignment: .trailing).padding(.top, 12)
             Group {
                 if let text, !text.isEmpty { Text(highlighted(text, span: span, color: color)).textSelection(.enabled) }
                 else { Text(text == nil ? "—" : "空行").foregroundStyle(.tertiary) }
-            }.font(.system(size: 12, design: .monospaced)).lineLimit(wrap ? nil : 1).fixedSize(horizontal: false, vertical: true).frame(width: width, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 10)
+            }.font(theme.font( 12, design: .monospaced)).lineLimit(wrap ? nil : 1).fixedSize(horizontal: false, vertical: true).frame(width: width, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 10)
         }.frame(maxHeight: .infinity, alignment: .top).background(text == nil ? Color.primary.opacity(0.02) : color.opacity(0.055))
     }
     private func highlighted(_ text: String, span: TextComparison.Span?, color: Color) -> AttributedString {

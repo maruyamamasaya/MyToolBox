@@ -20,6 +20,7 @@ Swift 5 language mode（Xcode 26.6 / Swift 6.3.3で検証）、macOS 14+ arm64�
 ## Directory Structure / Main Components
 - `Sources/MyToolBox/App/ToolCatalog.swift`：実装済みツールのID・名称・説明・アイコン。AppDelegateが明示的に画面へ振り分ける。
 - `Sources/MyToolBox/App`：アプリ起動・ステータス項目・transient popover・UI状態・ログイン起動・sleep通知。
+- `Sources/MyToolBox/UI/AppTheme.swift`：3テーマのパレットと背景。ThemeRootが共通AppStorageを監視しEnvironmentへ注入。入力モデルを再作成せず全windowへ反映。ThemeControls/ThemeWindowChrome/ThemeNativeTable/ThemePixelIconがWindows 98部品を描画。詳細は[テーマ](docs/THEMES.md)。
 - `Sources/MyToolBox/UI`：390×620ptの一覧カード・詳細・グラフ・設定。popover内で画面を切替、再表示時は一覧へ戻す。
 - `Sources/MyToolBox/Tools`：共通ToolPage/ToolCard、11専用UI、ToolWindows、CSVModel、SpeakerModel、MicrophoneModel。window終了/sleepで音声停止。
 - `Sources/MonitorKit/Tools`：CSVパーサ・書出し、営業日、音声信号の純粋ロジック。祝日JSONをbundleから読込。テキスト変換も共通処理として実装。
@@ -48,3 +49,12 @@ MainActorの1つのTaskがactor取得完了を待ち、snapshot・時刻付き60
 採用理由は[0002](decisions/0002-poc-and-native-mvp.md)。
 
 比較ツールはテキスト差分とリスト比較の入力を共有する。ComparisonModelはUI状態、専用ComparisonWorker actorはUIスレッド外の直列計算、MonitorKitのTextComparison/ListComparisonは純粋ロジック。編集時は旧Taskをcancelし、古い結果を公開しない。LCSと変更行対応付けは行数・バイト数・協調的な時間予算で制限する。詳細は[比較ツール](docs/COMPARISON_TOOLS.md)。
+
+
+カレンダーはCalendarWorkspaceModelが候補日・営業日範囲・独自休日をwindow内で保持し、日程候補／営業日計算の2画面が共有する。ScheduleCandidatesは選択・時間検証・整形の純粋ロジック、ToolCalendarは単一／複数選択の共通描画。ToolID.businessDaysを維持し表示名だけカレンダーへ変更。詳細は[カレンダー](docs/CALENDAR.md)。
+
+User-Agent Viewerは非永続WKWebViewへ同梱HTML文字列だけを読み込み、navigator/screenを評価してネイティブ画面へ表示する。リモートURLへ遷移しない。UA解析はMonitorKitのUserAgentInfoで共有。取得値はメモリ内のみ。
+
+画像リサイズはImageIO/CoreGraphicsを使用し、専用ImageResizeWorker actorで読込・デコード・変換・保存を直列処理する。プレビューと出力はwindow内メモリで保持。寸法・形式・品質変更で古い結果を破棄し、保存は明示操作。追加ランタイム・外部パッケージ不要。
+
+時間ツールはUtilityTimerの日時差分をTimerBoardModel／FocusTimerModelが0.25秒ごとに表示へ反映する。ボードは設定・実行基準日時をローカル保存し、close時に一時停止。TimeCalculationは勤務時間・時間帯合計の純粋計算。詳細は[時間ツール](docs/TIME_TOOLS.md)。

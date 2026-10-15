@@ -45,4 +45,48 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 
 - [2026-10-15：行・置換・リストの5機能を統合追加](2026-10-15-20-line-tools.md)
 
+- [2026-10-15：Blue Cosmos共通テーマ](2026-10-15-21-blue-cosmos.md)
+
+- [2026-10-15：将来のWindows版モニター方針](2026-10-15-22-windows-monitor-note.md)
+
 - [2026-10-15：比較ツールとGit管理](2026-10-15-22-comparison-git.md)
+
+- [2026-10-15：コンパクトなツール一覧](2026-10-15-23-compact-launcher.md)
+
+- [2026-10-15：テキスト変換・文字チェック](2026-10-15-24-text-codec.md)
+
+- [2026-10-15：ツール一覧の白いフォーカス枠](2026-10-15-25-launcher-focus.md)
+
+- [2026-10-15：3テーマ切り替え・Living Aurora／Windows 98](2026-10-15-25-theme-switching.md)
+
+- [2026-10-15：Linux系ツールの参照確認](2026-10-15-25-linux-reference-review.md)
+
+- [2026-10-15：通信速度メニューの表示幅](2026-10-15-27-network-menu-width.md)
+
+- [2026-10-15：カラーパレット追加](2026-10-15-28-color-palette.md)
+
+- [2026-10-15：日程候補と営業日計算のカレンダー統合](2026-10-15-29-calendar-candidates.md)
+
+- [2026-10-15：日程候補の9〜21時バー](2026-10-15-calendar-time-bar.md)
+
+- [2026-10-15：User-Agent Viewer追加](2026-10-15-30-user-agent-viewer.md)
+
+- [2026-10-15：画像リサイズ追加](2026-10-15-31-image-resizer.md)
+
+- [計算ツール5本](2026-10-15-31-technical-calculators.md)
+- [計算ツールの配置・実機確認](2026-10-15-32-calculators-installed.md)
+- [一覧のカテゴリ・検索](2026-10-15-33-launcher-categories.md)
+- [ツールのお気に入り](2026-10-15-34-tool-favorites.md)
+- [お気に入りのドラッグ並べ替え](2026-10-15-35-favorite-reordering.md)
+- [常駐監視の誤終了防止](2026-10-15-36-prevent-accidental-quit.md)
+- [時間ツール4本](2026-10-15-37-time-tools.md)
+
+- [ローカルメモ追加（テスト保留）](2026-10-15-37-local-memo.md)
+
+- [ポート番号検索・HTTPステータス一覧（テスト保留）](2026-10-15-38-network-reference.md)
+
+- [乱数ジェネレーター追加](2026-10-15-39-random-numbers.md)
+
+- [ハッシュ・テストデータ生成の統合追加（テスト保留）](2026-10-15-39-developer-generators.md)
+
+- [GitHubへの保存](2026-10-15-40-github-push.md)
