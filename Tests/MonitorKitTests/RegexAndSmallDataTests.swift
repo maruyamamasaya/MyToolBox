@@ -34,6 +34,17 @@ final class RegexAndSmallDataTests: XCTestCase {
         literal.minimum = -1
         XCTAssertThrowsError(try literal.pattern())
     }
+    func testSavedTableCSVReopensExactly() throws {
+        let rows = [["名前", "メモ", "空欄"], ["日本語😀", "カンマ,と\"引用符\"\nセル内改行", ""], ["末尾", "", ""]]
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".csv")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try SmallDataTools.export(rows, format: .csv, header: false, alignment: .right).write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertEqual(try SmallDataTools.tableCSV(Data(contentsOf: url)), rows)
+        XCTAssertEqual(try SmallDataTools.tableCSV(CSVDocument.encoded(rows)), rows)
+        XCTAssertThrowsError(try SmallDataTools.tableCSV(Data(repeating: 32, count: 524_289)))
+        XCTAssertThrowsError(try SmallDataTools.tableCSV(Data(Array(repeating: "x", count: 101).joined(separator: "\n").utf8)))
+        XCTAssertThrowsError(try SmallDataTools.tableCSV(Data("a,\"unclosed".utf8)))
+    }
     func testTableExportsEscapingAndHeaders() throws {
         let rows = [["名前", "内容"], ["a|b", "<script>\n\"x\""]]
         let csv = SmallDataTools.export(rows, format: .csv, header: true, alignment: .left)

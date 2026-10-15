@@ -77,6 +77,9 @@ struct TestDataGeneratorView: View {
     @State private var columnCount = 5
     @State private var rowCount = 5
     @State private var columns = TestDataGenerator.defaultColumns
+    init(model: GeneratorModel, initialMode: String = "文字列") {
+        self.model = model; _mode = State(initialValue: initialMode)
+    }
     private var settingsKey: String {
         [mode, kind.rawValue, length, count, separator, String(sentences), String(sentenceLength), language, String(uuidCount), String(columnCount), String(rowCount)] .joined(separator: "|") + columns.map { $0.name + $0.type.rawValue }.joined(separator: "|")
     }

@@ -3,6 +3,8 @@ import UniformTypeIdentifiers
 
 struct TableBuilderView: View {
     @StateObject private var table = CSVModel(editable: true)
+    @StateObject private var fileWindow = TableFileWindowHandle()
+    @State private var filePanelActive = false
     @State private var input = ""
     @State private var tabSeparated = false
     @State private var header = true
@@ -22,6 +24,7 @@ struct TableBuilderView: View {
                         }
                     }
                     HStack {
+                        Button("CSVファイルを開く…", action: openCSV).disabled(filePanelActive)
                         Text("\(table.rows.count)行 × \(table.width)列").font(.headline)
                         Spacer()
                         Button("サンプル") { replace(sample) }
@@ -50,20 +53,22 @@ struct TableBuilderView: View {
                     ToolCard { ScrollView([.horizontal, .vertical]) { Text(output).font(.system(.body, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 160) }
                     HStack {
                         Button("コピー") { table.finishEditing(); NSPasteboard.general.clearContents(); status = NSPasteboard.general.setString(output, forType: .string) ? "コピーしました" : "コピーできませんでした" }
-                        Button("ファイルを保存…", action: save)
+                        Button("ファイルを保存…", action: save).disabled(filePanelActive)
                         Text(status).font(.caption).foregroundStyle(.secondary)
                     }
-                    ToolFootnote(text: "最大100行・30列。編集中の表は自動保存されません。必要な内容はコピーまたは保存してください。取り込み・サンプル・クリアは編集中の内容を置き換えます。")
+                    ToolFootnote(text: "最大100行・30列。再編集する場合はCSVで保存し、「CSVファイルを開く」で読み込めます。編集中の表は自動保存されません。必要な内容はコピーまたは保存してください。取り込み・サンプル・クリアは編集中の内容を置き換えます。")
                 }.padding(22)
             }
         }.frame(minWidth: 940, idealWidth: 1000, minHeight: 820)
+            .background(TableFileWindowBridge(handle: fileWindow).frame(width: 0, height: 0))
             .onAppear { if table.rows.isEmpty { table.rows = sample } }
     }
     private var sample: [[String]] { [["項目", "数量", "メモ"], ["りんご", "3", "青森"], ["みかん", "5", "愛媛"]] }
-    private func replace(_ rows: [[String]]) {
+    @discardableResult private func replace(_ rows: [[String]]) -> Bool {
         table.finishEditing()
-        guard !table.dirty || table.confirmReplace() else { return }
+        guard !table.dirty || table.confirmReplace() else { return false }
         table.rows = rows; table.selectedRow = -1; table.selectedColumn = 0; table.dirty = true; status = ""
+        return true
     }
     private func load() {
         do {
@@ -72,15 +77,68 @@ struct TableBuilderView: View {
             replace(rows)
         } catch { status = error.localizedDescription }
     }
+    private func openCSV() {
+        guard !filePanelActive else { return }
+        guard let window = fileWindow.window else { status = "表のウィンドウが見つかりません。開き直してください。"; return }
+        window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        window.makeFirstResponder(nil)
+        let panel = NSOpenPanel()
+        panel.title = "表のCSVを開く"
+        panel.allowedContentTypes = [.commaSeparatedText, .plainText]
+        panel.allowsMultipleSelection = false
+        filePanelActive = true
+        panel.beginSheetModal(for: window) { response in
+            filePanelActive = false
+            guard response == .OK, let url = panel.url else { status = "読み込みをキャンセルしました"; return }
+            do {
+                let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max
+                guard size <= 524_288 else { throw ToolFailure.message("512KiB以下のCSVを選んでください。") }
+                let rows = try SmallDataTools.tableCSV(Data(contentsOf: url))
+                if replace(rows) {
+                    table.dirty = false; status = "読み込みました：" + url.lastPathComponent
+                }
+            } catch { status = error.localizedDescription }
+        }
+    }
     private func save() {
-        table.finishEditing()
+        guard !filePanelActive else { return }
+        guard let window = fileWindow.window else { status = "表のウィンドウが見つかりません。開き直してください。"; return }
+        window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        window.makeFirstResponder(nil)
+        let contents = output
+        guard format != .csv || contents.utf8.count <= 524_288 else {
+            status = "CSVは再読み込み可能な512KiB以内にしてください。"; return
+        }
         let panel = NSSavePanel()
         let ext = format == .markdown ? "md" : format == .html ? "html" : "csv"
+        panel.title = "表を保存"
         panel.nameFieldStringValue = "table." + ext
         panel.allowedContentTypes = [UTType(filenameExtension: ext) ?? .plainText]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { try output.write(to: url, atomically: true, encoding: .utf8); table.dirty = false; status = "保存しました" }
-        catch { status = error.localizedDescription }
+        filePanelActive = true
+        panel.beginSheetModal(for: window) { response in
+            filePanelActive = false
+            guard response == .OK, let url = panel.url else { status = "保存をキャンセルしました"; return }
+            do {
+                try contents.write(to: url, atomically: true, encoding: .utf8)
+                table.dirty = false; status = "保存しました：" + url.lastPathComponent
+            } catch { status = error.localizedDescription }
+        }
+    }
+}
+
+@MainActor private final class TableFileWindowHandle: ObservableObject {
+    weak var window: NSWindow?
+}
+private struct TableFileWindowBridge: NSViewRepresentable {
+    let handle: TableFileWindowHandle
+    final class Host: NSView {
+        var attach: ((NSWindow?) -> Void)?
+        override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); attach?(window) }
+    }
+    func makeNSView(context: Context) -> Host { Host() }
+    func updateNSView(_ view: Host, context: Context) {
+        view.attach = { handle.window = $0 }
+        handle.window = view.window
     }
 }
 

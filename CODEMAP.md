@@ -75,3 +75,5 @@ JSON：`JSONWorkspace.swift`（数値保持パーサ・部分木編集）→ `JS
 正規表現・表・CSV統計：`RegexWorkbench.swift`／`SmallDataTools.swift` → `RegexToolViews.swift`／`SmallDataToolViews.swift` → ToolCatalog／ToolWindows。`RegexAndSmallDataTests.swift`、`tools/RenderDataWorkbench.swift`。[仕様](docs/DATA_WORKBENCH.md)。
 
 SQL：`SQLText.swift`（字句・整形・説明）／`SQLPlayground.swift`（SQLite・SQLPlaygroundWorker）→ `SQLWorkspaceView.swift` → ToolCatalog／ToolWindows。`SQLToolsTests.swift`。[仕様](docs/SQL_TOOLS.md)。
+
+追加ツール回帰：`Tests/MonitorKitTests/AddedToolsTests.swift`／`ServerAndEverydayTests.swift`。メモ・生成・検索、サーバー／日常計算を検証。`tools/VerifyAddedTools.swift`で隔離モデル・3テーマ描画。[結果](sessions/2026-10-15-49-batch-tool-validation.md)。

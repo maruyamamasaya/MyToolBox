@@ -126,7 +126,8 @@ import UniformTypeIdentifiers
     }
 }
 struct DirectoryTreeView: View {
-    @StateObject private var model = DirectoryTreeModel()
+    @StateObject private var model: DirectoryTreeModel
+    init(defaults: UserDefaults = .standard) { _model = StateObject(wrappedValue: DirectoryTreeModel(defaults: defaults)) }
     @State private var name = "new-folder"
     @State private var folder = true
     @State private var format = DirectoryTree.Format.tree

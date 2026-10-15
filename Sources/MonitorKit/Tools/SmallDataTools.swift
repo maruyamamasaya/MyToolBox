@@ -7,6 +7,12 @@ public enum SmallDataTools {
         guard rows.count <= 1001, (rows.first?.count ?? 0) <= 30 else { throw ToolFailure.message("最大1,000データ行・30列です。") }
         return rows
     }
+    public static func tableCSV(_ data: Data) throws -> [[String]] {
+        guard data.count <= 524_288 else { throw ToolFailure.message("512KiB以下のCSVを選んでください。") }
+        let rows = try parse(CSVDocument.decode(data).0)
+        guard rows.count <= 100 else { throw ToolFailure.message("表ビルダーは100行までです。") }
+        return rows
+    }
     public enum Format: String, CaseIterable { case markdown = "Markdown", html = "HTML", csv = "CSV" }
     public enum Alignment: String, CaseIterable { case left = "左揃え", center = "中央揃え", right = "右揃え" }
     public static func export(_ rows: [[String]], format: Format, header: Bool, alignment: Alignment) -> String {

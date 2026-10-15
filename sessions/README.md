@@ -103,3 +103,13 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [追加ツール一式のコミット・プッシュ](2026-10-15-46-commit-tool-additions.md)
 
 - [追加分のアプリ反映](2026-10-15-47-install-all-additions.md)
+
+- [追加4ツールのインストール版・実機確認](2026-10-15-48-data-tools-live.md)
+
+- [追加ツール一括検証・修正](2026-10-15-49-batch-tool-validation.md)
+
+- [表ビルダーの保存・再読み込み](2026-10-15-50-table-file-roundtrip.md)
+
+- [追加27ツールの代表操作・実機確認](2026-10-15-50-additional-tools-live.md)
+
+- [保存・再読み込み修正と検証記録のコミット](2026-10-15-51-commit-fixes.md)

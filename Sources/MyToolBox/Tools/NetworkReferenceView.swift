@@ -39,7 +39,7 @@ struct NetworkReferenceView: View {
                             Button {
                                 query = String(port); transport = "all"
                             } label: {
-                                Text("\(port) · \(PortReference.all.first { $0.port == port }?.service ?? "")").lineLimit(1)
+                                Text("\(String(port)) · \(PortReference.all.first { $0.port == port }?.service ?? "")").lineLimit(1)
                             }.help("\(port)を検索")
                         }
                     }

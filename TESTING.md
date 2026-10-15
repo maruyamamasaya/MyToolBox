@@ -190,17 +190,17 @@ ImageResizerTestsでPNG寸法/透明・JPEG白背景/形式・EXIF向き補正�
 
 誤終了防止は[実機記録](sessions/2026-10-15-36-prevent-accidental-quit.md)。一覧の終了ボタン消失、⌘Q無効、メニューの確認から継続、画面閉鎖後のログ増加を確認。
 
-## 時間ツール（実行保留）
+## 時間ツール
 
-ユーザー指定で今回のFast／Full・単体・実機UIテストは後日実施。TimeToolsTestsの日時差分・一時停止／再開・保存復元・日付またぎ・入力検証に加え、4画面の3テーマ、ボード12個・複製／移動／削除・保存・スリープ復帰・ポモドーロ完了回数／日付変更・会議の2操作開始・時間計算コピーを確認する。[仕様](docs/TIME_TOOLS.md)。
+保留を解除し一括検証を実施（末尾の記録参照）。TimeToolsTestsの日時差分・一時停止／再開・保存復元・日付またぎ・入力検証に加え、4画面の3テーマ、ボード12個・複製／移動／削除・保存・スリープ復帰・ポモドーロ完了回数／日付変更・会議の2操作開始・時間計算コピーを確認する。[仕様](docs/TIME_TOOLS.md)。
 
-ローカルメモ：今回はユーザー指示で全検証を保留。[後日のテスト項目](docs/LOCAL_MEMO.md)にJSON互換・履歴・永続化・障害・UIの未実施項目を集約。
+ローカルメモ：自動／モデル検証を実施（末尾の一括検証参照）。[後日のテスト項目](docs/LOCAL_MEMO.md)にJSON互換・履歴・永続化・障害・UIの未実施項目を集約。
 
-ポート番号検索・HTTPステータス一覧：ユーザー指示で全検証を保留。[後日のテスト項目](docs/NETWORK_REFERENCE.md)に検索・分類・データ・UI・ビルド確認を集約。
+ポート番号検索・HTTPステータス一覧：自動／モデル検証を実施（末尾の一括検証参照）。[後日のテスト項目](docs/NETWORK_REFERENCE.md)に検索・分類・データ・UI・ビルド確認を集約。
 
-ハッシュ・テストデータ生成：ユーザー指示で全検証を保留。[後日テスト](docs/DEVELOPER_GENERATORS.md)にSHA既知値・UUID v4・生成制約・CSV往復・キャンセル・UI確認を集約。
+ハッシュ・テストデータ生成：自動／モデル検証を実施（末尾の一括検証参照）。[後日テスト](docs/DEVELOPER_GENERATORS.md)にSHA既知値・UUID v4・生成制約・CSV往復・キャンセル・UI確認を集約。
 
-サーバー・ネットワーク・日常計算11本：今回はユーザー指示で全検証を保留。[マージ後のテスト項目](docs/SERVER_AND_EVERYDAY_TEST_PLAN.md)にロジック境界値・正常/異常系・3テーマ・永続化・ビルドの未実施項目を集約。参照元の不足補完分は[照合記録](docs/SERVER_AND_EVERYDAY_PARITY.md)に追加。
+サーバー・ネットワーク・日常計算11本：自動／モデル検証を実施（末尾の一括検証参照）。[マージ後のテスト項目](docs/SERVER_AND_EVERYDAY_TEST_PLAN.md)にロジック境界値・正常/異常系・3テーマ・永続化・ビルドの未実施項目を集約。参照元の不足補完分は[照合記録](docs/SERVER_AND_EVERYDAY_PARITY.md)に追加。
 
 ログハイライター：LogHighlighterTestsでレベル判定・改行・前後行・検索を検証。実機では3テーマ、検索の前後移動、フィルター後のコピー、折り返し、2 MB超過時の案内を確認する。
 
@@ -211,3 +211,9 @@ JSONツール：`JSONWorkspaceTests`で数値精度・JSON往復・構文／Unic
 `RegexAndSmallDataTests.swift`でUnicode・キャプチャ・置換・フラグ・空一致・不正入力・部品生成・表の各形式・欠損／混在／重複／数値統計を検証。描画はRenderLocalToolsのコンパイル末尾を`tools/RenderDataWorkbench.swift -o build/render-data-workbench`へ置換し実行。4画面×3テーマを確認する。手動ではテスターの入力変更／コピー、条件追加／並べ替え、表の編集／保存、CSV読込／NULL条件変更を確認する。[仕様](docs/DATA_WORKBENCH.md)。
 
 SQLツール：SQLToolsTestsで引用保持・整形の実行結果一致・SELECT説明・メモリ内SQLite・ロールバック・外部操作拒否・実行上限を検証。[実機確認項目](docs/SQL_TOOLS.md)。
+
+## 追加ツールの一括検証
+
+[実行記録](sessions/2026-10-15-49-batch-tool-validation.md)。AddedToolsTests／ServerAndEverydayTestsを標準Swiftテストに追加。`tools/VerifyAddedTools.swift`は全Sources（ProbeとMyToolBoxAppを除く）と一緒にコンパイルし`build/verify-added-tools`で実行。合成ファイル・隔離UserDefaultsによる保存失敗／復旧・モデル遷移と3テーマ描画を行う。画面は`build/added-tools-preview/`、ログは`build/validation/added-tools-probe.log`。実機の全操作とは区別する。
+
+表ビルダー：`testSavedTableCSVReopensExactly`で実ファイルのUTF-8／BOM付きCSVの往復、日本語・引用符・セル内改行・末尾空欄、サイズ／行数／構文エラーを検証。保存3形式、windowを閉じた後のCSV再読込、保存キャンセルの保持は[実機記録](sessions/2026-10-15-50-table-file-roundtrip.md)。
