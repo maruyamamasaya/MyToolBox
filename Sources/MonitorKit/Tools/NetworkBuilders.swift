@@ -37,16 +37,32 @@ public enum NetworkBuilders {
         return Subnet(input: ip(address) + "/\(prefix)", address: address, prefix: prefix, mask: mask, network: network, broadcast: network | ~mask)
     }
     public static func formatCIDR(_ text: String) -> String {
-        text.components(separatedBy: .newlines).map { line in
-            let parts = line.replacingOccurrences(of: "/", with: " ").split(whereSeparator: { $0.isWhitespace })
-            return parts.count == 2 ? parts.joined(separator: "/") : line.trimmingCharacters(in: .whitespaces)
-        }.filter { !$0.isEmpty }.joined(separator: "\n")
+        text.components(separatedBy: .newlines).compactMap { line in
+            let clean = line.replacingOccurrences(of: "／", with: "/").trimmingCharacters(in: .whitespaces)
+            guard !clean.isEmpty else { return nil }
+            let parts = clean.replacingOccurrences(of: "/", with: " ").split(whereSeparator: { $0.isWhitespace })
+            guard parts.count == 2, let parsed = try? subnet(parts.joined(separator: "/")) else { return "解析不能: " + clean }
+            return parsed.input
+        }.joined(separator: "\n")
     }
     public struct Analysis {
         public let subnets: [Subnet]
         public let errors: [String]
         public let groups: [String]
         public let relations: [String]
+        public var hierarchy: String {
+            let unique = Dictionary(grouping: subnets, by: { $0.cidr }).compactMap { $0.value.first }.sorted { $0.network == $1.network ? $0.prefix < $1.prefix : $0.network < $1.network }
+            var children: [String: [Subnet]] = [:], roots: [Subnet] = []
+            for child in unique {
+                let parent = unique.filter { $0.prefix < child.prefix && $0.network <= child.network && $0.broadcast >= child.broadcast }.max { $0.prefix < $1.prefix }
+                if let parent { children[parent.cidr, default: []].append(child) } else { roots.append(child) }
+            }
+            func branch(_ node: Subnet, depth: Int) -> [String] {
+                let ownIPs = subnets.filter { $0.cidr == node.cidr }.map { NetworkBuilders.ip($0.address) }.joined(separator: ", ")
+                return [String(repeating: "  ", count: depth) + node.cidr + " [" + ownIPs + "]"] + (children[node.cidr] ?? []).flatMap { branch($0, depth: depth + 1) }
+            }
+            return roots.flatMap { branch($0, depth: 0) }.joined(separator: "\n")
+        }
     }
     public static func analyze(_ text: String) throws -> Analysis {
         guard text.utf8.count <= 100_000 else { throw Failure.invalid("入力は100KB以内にしてください。") }

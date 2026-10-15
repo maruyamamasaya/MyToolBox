@@ -48,6 +48,27 @@ public enum ServerUtilities {
                 return "\(names[i]): \(expanded)（\(fields[i])）"
             }
         }
+        public var summary: String {
+            let weekdays = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"]
+            let fixedMinutes = fields[0].allSatisfy { $0.isNumber || $0 == "," }
+            let fixedHours = fields[1].allSatisfy { $0.isNumber || $0 == "," }
+            let time = fixedMinutes && fixedHours ? values[1].sorted().flatMap { hour in
+                values[0].sorted().map { "\(hour):" + String(format: "%02d", $0) }
+            }.joined(separator: "、") : ""
+            if Array(fields.suffix(3)) == ["*", "*", "*"] {
+                if fields[0].range(of: #"^\*/[0-9]+$"#, options: .regularExpression) != nil && fields[1] == "*" { return String(fields[0].dropFirst(2)) + "分ごとに実行" }
+                if !time.isEmpty { return "毎日 " + time + " に実行" }
+            }
+            if fields[2] == "*" && fields[3] == "*" && !time.isEmpty {
+                let days = fields[4] == "1-5" ? "平日の毎日" : "毎週" + values[4].sorted().map { weekdays[$0] }.joined(separator: "・")
+                return days + " " + time + " に実行"
+            }
+            if fields[3] == "*" && fields[4] == "*" && fields[2] != "*" && !time.isEmpty {
+                return "毎月" + values[2].sorted().map(String.init).joined(separator: "・") + "日 " + time + " に実行"
+            }
+            let dayRule = !fields[2].hasPrefix("*") && !fields[4].hasPrefix("*") ? "日と曜日はいずれかに一致" : "日と曜日は両方に一致"
+            return descriptions.joined(separator: " ／ ") + "。" + dayRule + "で実行"
+        }
         /// Standard five-field cron: restricted day-of-month/day-of-week use OR.
         public func next(after date: Date, timeZone: TimeZone, count: Int = 5) -> [Date] {
             var calendar = Calendar(identifier: .gregorian); calendar.timeZone = timeZone
@@ -95,13 +116,17 @@ public enum ServerUtilities {
             }; all.append(values)
         }; return Cron(fields: fields, values: all)
     }
-    public enum EpochUnit: String, CaseIterable { case seconds = "秒", milliseconds = "ミリ秒" }
+    public enum EpochUnit: String, CaseIterable { case automatic = "自動判定", seconds = "秒", milliseconds = "ミリ秒" }
     public static func epoch(_ text: String, unit: EpochUnit) throws -> Date {
-        let raw = try EverydayCalculators.number(text), seconds = unit == .seconds ? raw : raw / 1000
+        let raw = try EverydayCalculators.number(text)
+        let milliseconds = unit == .milliseconds || (unit == .automatic && abs(raw) >= 1e11)
+        let seconds = milliseconds ? raw / 1000 : raw
         let date = Date(timeIntervalSince1970: seconds)
         guard seconds >= -62_135_596_800, seconds <= 253_402_300_799.999 else { throw Failure.invalid("対応範囲は西暦1〜9999年です。") }; return date
     }
     public static func date(_ text: String, timeZone: TimeZone) throws -> Date {
+        var text = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "T", with: " ")
+        if text.count == 16 { text += ":00" }
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = timeZone; formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"; formatter.isLenient = false
         guard let date = formatter.date(from: text), formatter.string(from: date) == text,

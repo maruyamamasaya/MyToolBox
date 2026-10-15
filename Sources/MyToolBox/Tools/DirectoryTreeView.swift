@@ -20,7 +20,7 @@ import UniformTypeIdentifiers
         do {
             try DirectoryTree.validate(next)
             let encoded = try DirectoryTree.encode(next)
-            undoStack.append(nodes); undoStack = Array(undoStack.suffix(50)); redoStack = []
+            undoStack.append(nodes); undoStack = Array(undoStack.suffix(60)); redoStack = []
             nodes = next; defaults.set(encoded, forKey: key); error = nil
             if !nodes.contains(where: { $0.id == selected }) { selected = nodes.last?.id }
         } catch { self.error = error.localizedDescription }
@@ -38,7 +38,8 @@ import UniformTypeIdentifiers
     func add(child: Bool, name: String, folder: Bool) {
         var next = nodes
         let parent = index
-        if child && (parent == nil || !nodes[parent!].folder) { error = "子を追加するフォルダを選択してください。"; return }
+        if child && parent == nil { error = "子を追加する項目を選択してください。"; return }
+        if child, let parent { next[parent].folder = true; next[parent].open = true }
         let node = DirectoryTree.Node(name: name, folder: folder, depth: child ? nodes[parent!].depth + 1 : 0)
         next.insert(node, at: child ? end(parent!) : next.count); commit(next)
         if error == nil { selected = node.id }
@@ -75,10 +76,49 @@ import UniformTypeIdentifiers
             next.removeSubrange(i..<stop); next.insert(contentsOf: block, at: previous)
         }; commit(next)
     }
+    var visibleNodes: [DirectoryTree.Node] {
+        var hiddenBelow: Int?
+        return nodes.filter { node in
+            if let depth = hiddenBelow {
+                if node.depth > depth { return false }
+                hiddenBelow = nil
+            }
+            if node.folder && !node.open { hiddenBelow = node.depth }
+            return true
+        }
+    }
+    func toggle(_ id: UUID) {
+        guard let i = nodes.firstIndex(where: { $0.id == id }) else { return }
+        var next = nodes; next[i].open.toggle(); persistDisclosure(next)
+    }
+    func discloseAll(_ open: Bool) {
+        var next = nodes; for i in next.indices where next[i].folder { next[i].open = open }; persistDisclosure(next)
+    }
+    private func persistDisclosure(_ next: [DirectoryTree.Node]) {
+        do { let text = try DirectoryTree.encode(next); nodes = next; defaults.set(text, forKey: key); error = nil }
+        catch { self.error = error.localizedDescription }
+    }
+    func hasChildren(_ id: UUID) -> Bool { guard let i = nodes.firstIndex(where: { $0.id == id }) else { return false }; return end(i) > i + 1 }
+    enum Placement { case before, inside, after }
+    func canDrop(source: UUID, target: UUID, placement: Placement) -> Bool {
+        guard let i = nodes.firstIndex(where: { $0.id == source }), let j = nodes.firstIndex(where: { $0.id == target }), !(i..<end(i)).contains(j) else { return false }
+        return placement != .inside || nodes[j].folder
+    }
+    func drop(source: UUID, target: UUID, placement: Placement) {
+        guard canDrop(source: source, target: target, placement: placement), let i = nodes.firstIndex(where: { $0.id == source }) else { return }
+        let stop = end(i); var next = nodes; var block = Array(next[i..<stop]); next.removeSubrange(i..<stop)
+        guard let j = next.firstIndex(where: { $0.id == target }) else { return }
+        let targetEnd = (j + 1..<next.count).first { next[$0].depth <= next[j].depth } ?? next.count
+        let newDepth = next[j].depth + (placement == .inside ? 1 : 0), shift = newDepth - block[0].depth
+        for k in block.indices { block[k].depth += shift }
+        if placement == .inside { next[j].open = true }
+        next.insert(contentsOf: block, at: placement == .before ? j : targetEnd)
+        commit(next); if error == nil { selected = source }
+    }
     func importText(_ text: String, json: Bool) { do { let next = try (json ? DirectoryTree.decode(text) : DirectoryTree.parse(text)); commit(next) } catch { self.error = error.localizedDescription } }
     func exportJSON() {
         do {
-            let text = try DirectoryTree.encode(nodes), panel = NSSavePanel()
+            let text = try DirectoryTree.encodeReference(nodes), panel = NSSavePanel()
             panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "directory-tree.json"
             guard panel.runModal() == .OK, let url = panel.url else { return }
             try text.write(to: url, atomically: true, encoding: .utf8); error = nil
@@ -87,11 +127,19 @@ import UniformTypeIdentifiers
 }
 struct DirectoryTreeView: View {
     @StateObject private var model = DirectoryTreeModel()
-    @State private var name = "new-folder", folder = true
+    @State private var name = "new-folder"
+    @State private var folder = true
     @State private var format = DirectoryTree.Format.tree
     @State private var style = DirectoryTree.Style()
-    @State private var importText = "", importJSON = false, importing = false
+    @State private var importText = ""
+    @State private var importJSON = false
+    @State private var importing = false
     @State private var confirmClear = false
+    @State private var deleting: UUID?
+    @State private var confirmDelete = false
+    @State private var dragged: UUID?
+    @State private var dropTarget: UUID?
+    @State private var placement = DirectoryTreeModel.Placement.inside
     private var preview: Result<[(String, String)], Error> { Result { [("プレビュー", try DirectoryTree.render(model.nodes, format: format, style: style))] } }
     var body: some View {
         ToolPage("ディレクトリツリー作成", subtitle: "構成を編集・複数形式へ出力・JSON保存", symbol: "folder.badge.gearshape", tint: .cyan) {
@@ -100,6 +148,7 @@ struct DirectoryTreeView: View {
                     HStack {
                         Button("元に戻す") { model.history(redo: false) }.disabled(model.undoStack.isEmpty)
                         Button("やり直す") { model.history(redo: true) }.disabled(model.redoStack.isEmpty)
+                        Button("全展開") { model.discloseAll(true) }; Button("全折りたたみ") { model.discloseAll(false) }
                         Spacer(); Button("サンプルに置換") { model.commit(DirectoryTree.sample) }; Button("全削除") { confirmClear = true }
                     }
                     UtilityField(title: "名前", text: $name); Toggle("フォルダ", isOn: $folder)
@@ -109,18 +158,26 @@ struct DirectoryTreeView: View {
                         Button("選択項目を更新") { model.rename(name, folder: folder) }.disabled(model.index == nil)
                     }
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(model.nodes) { node in
-                            Button {
-                                model.selected = node.id; name = node.name; folder = node.folder
-                            } label: {
-                                HStack { Text(String(repeating: "  ", count: node.depth) + (node.folder ? "📁 " : "📄 ") + node.name); Spacer(); if model.selected == node.id { Image(systemName: "checkmark.circle.fill") } }.frame(maxWidth: .infinity, alignment: .leading).padding(5)
-                            }.buttonStyle(.plain)
+                        ForEach(model.visibleNodes) { node in
+                            DirectoryTreeRow(model: model, node: node, select: { name = node.name; folder = node.folder; model.selected = node.id }, remove: { requestRemove(node.id) })
+                                .background(dropTarget == node.id && placement == .inside ? Color.cyan.opacity(0.15) : Color.clear)
+                                .overlay(alignment: .top) { if dropTarget == node.id && placement == .before { Rectangle().fill(Color.cyan).frame(height: 2) } }
+                                .overlay(alignment: .bottom) { if dropTarget == node.id && placement == .after { Rectangle().fill(Color.cyan).frame(height: 2) } }
+                                .onDrag {
+                                    dragged = node.id
+                                    let provider = NSItemProvider()
+                                    provider.registerDataRepresentation(forTypeIdentifier: UTType.directoryTreeNode.identifier, visibility: .ownProcess) { complete in
+                                        complete(Data(node.id.uuidString.utf8), nil); return nil
+                                    }
+                                    return provider
+                                }
+                                .onDrop(of: [.directoryTreeNode], delegate: DirectoryTreeDrop(model: model, target: node.id, folder: node.folder, dragged: $dragged, highlighted: $dropTarget, placement: $placement))
                         }
                     }
                     HStack {
                         Button("上へ") { model.move(false) }; Button("下へ") { model.move(true) }
                         Button("階層を下げる") { model.indent(1) }; Button("階層を上げる") { model.indent(-1) }
-                        Button("選択項目と子を削除") { model.remove() }
+                        Button("選択項目と子を削除") { if let id = model.selected { requestRemove(id) } }
                     }.disabled(model.index == nil)
                 } }
                 if let error = model.error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
@@ -128,7 +185,7 @@ struct DirectoryTreeView: View {
                 if format == .custom {
                     ToolCard { VStack(alignment: .leading, spacing: 10) {
                         UtilityField(title: "フォルダ記号", text: $style.folder); UtilityField(title: "ファイル記号", text: $style.file)
-                        UtilityField(title: "階層記号", text: $style.branch); UtilityField(title: "箇条書き記号", text: $style.bullet)
+                        UtilityField(title: "階層記号", text: $style.branch); UtilityField(title: "矢印記号", text: $style.arrow); UtilityField(title: "箇条書き記号", text: $style.bullet)
                         Stepper("インデント幅: \(style.width)", value: $style.width, in: 1...8)
                         Toggle("アイコンを表示", isOn: $style.emoji)
                     } }
@@ -142,14 +199,78 @@ struct DirectoryTreeView: View {
                 }
                 if importing {
                     ToolCard { VStack(alignment: .leading, spacing: 12) {
-                        Text(importJSON ? "このツールで保存したJSONを貼り付け" : "2スペース字下げ、または標準Tree/ASCIIを貼り付け。フォルダ末尾は/。")
+                        Text(importJSON ? "参照Web版またはこのツールのJSONを貼り付け" : "標準Tree/ASCII、2スペース字下げ、箇条書き・Markdown・矢印に対応。フォルダ末尾は/。")
                         TextEditor(text: $importText).font(.system(.body, design: .monospaced)).frame(height: 160)
                         HStack { Button("現在の構成を置換して読込") { model.importText(importText, json: importJSON); if model.error == nil { importing = false } }; Button("キャンセル") { importing = false } }
                     } }
                 }
-                ToolFootnote(text: "構成はローカル自動保存。最大1,000項目・深さ20、Undo/Redoは50世代。移動ボタンは子を含めて並べ替えます。実際のファイル操作は行いません。JSONは本ツール固有形式です。")
+                ToolFootnote(text: "構成はローカル自動保存。最大1,000項目・深さ50、Undo/Redoは60世代。ドラッグは行の上/中央/下で前/フォルダ内/後ろへ移動。実際のファイル操作は行いません。参照Web版の入れ子JSONと旧ローカルJSONを読み込めます。")
             }.padding(24) }
         }.frame(minWidth: 950, minHeight: 800)
             .confirmationDialog("構成をすべて削除しますか？", isPresented: $confirmClear) { Button("削除", role: .destructive) { model.commit([]) } }
+            .confirmationDialog("選択項目とその中身を削除しますか？", isPresented: $confirmDelete) {
+                Button("子を含めて削除", role: .destructive) { if let deleting { model.selected = deleting; model.remove() } }
+            }
     }
+    private func requestRemove(_ id: UUID) {
+        if model.hasChildren(id) { deleting = id; confirmDelete = true }
+        else { model.selected = id; model.remove() }
+    }
+}
+
+private struct DirectoryTreeRow: View {
+    @ObservedObject var model: DirectoryTreeModel
+    let node: DirectoryTree.Node
+    let select: () -> Void
+    let remove: () -> Void
+    @State private var editing = false
+    @State private var draft = ""
+    @FocusState private var nameFocused: Bool
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("⠿").foregroundStyle(.secondary)
+            Button { model.toggle(node.id) } label: { Image(systemName: node.open ? "chevron.down" : "chevron.right").frame(width: 14) }.buttonStyle(.plain).disabled(!node.folder).opacity(node.folder ? 1 : 0)
+            Text(node.folder ? (node.open ? "📂" : "📁") : "📄")
+            if editing {
+                TextField("名前", text: $draft).focused($nameFocused).onSubmit { finish() }.onExitCommand { editing = false }
+                    .onChange(of: nameFocused) { _, focused in if !focused && editing { finish() } }
+            } else {
+                Button { select() } label: { Text(node.name).frame(maxWidth: .infinity, alignment: .leading) }.buttonStyle(.plain)
+            }
+            if model.selected == node.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(.cyan) }
+            Button("＋📁") { select(); model.add(child: true, name: "new-folder", folder: true) }.help("子フォルダを追加")
+            Button("＋📄") { select(); model.add(child: true, name: "new-file.txt", folder: false) }.help("子ファイルを追加")
+            Button("✎") { select(); draft = node.name; editing = true; nameFocused = true }.help("名前を編集")
+            Button("×", action: remove).help("削除")
+        }.padding(.leading, CGFloat(node.depth * 16)).frame(height: 32).contentShape(Rectangle())
+    }
+    private func finish() { model.selected = node.id; model.rename(draft, folder: node.folder); editing = false }
+}
+
+@MainActor private struct DirectoryTreeDrop: @preconcurrency DropDelegate {
+    let model: DirectoryTreeModel
+    let target: UUID
+    let folder: Bool
+    @Binding var dragged: UUID?
+    @Binding var highlighted: UUID?
+    @Binding var placement: DirectoryTreeModel.Placement
+    private func position(_ info: DropInfo) -> DirectoryTreeModel.Placement {
+        if folder && info.location.y > 8 && info.location.y < 24 { return .inside }
+        return info.location.y < 16 ? .before : .after
+    }
+    func validateDrop(info: DropInfo) -> Bool { guard let dragged else { return false }; return model.canDrop(source: dragged, target: target, placement: position(info)) }
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        guard validateDrop(info: info) else { highlighted = nil; return DropProposal(operation: .forbidden) }
+        highlighted = target; placement = position(info); return DropProposal(operation: .move)
+    }
+    func dropExited(info: DropInfo) { if highlighted == target { highlighted = nil } }
+    func performDrop(info: DropInfo) -> Bool {
+        guard let source = dragged, validateDrop(info: info) else { return false }
+        model.drop(source: source, target: target, placement: position(info)); dragged = nil; highlighted = nil
+        return model.error == nil
+    }
+}
+
+private extension UTType {
+    static let directoryTreeNode = UTType(exportedAs: "local.MyToolBox.directoryTreeNode", conformingTo: .data)
 }

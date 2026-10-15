@@ -9,11 +9,24 @@ public struct CommandReference: Identifiable {
     public let options: String
     public let note: String
     public var id: String { name }
-    public func matches(_ query: String) -> Bool {
-        let text = [name, category, summary, example, options, note].joined(separator: " ")
-        return query.split(whereSeparator: { $0.isWhitespace }).allSatisfy { text.localizedStandardContains(String($0)) }
+    public var examples: [String] { [example] }
+    public var related: [CommandReference] { Array(Self.entries.filter { $0.category == category && $0.name != name }.prefix(3)) }
+    public var optionCommand: String {
+        let first = options.components(separatedBy: "、").first ?? ""
+        let flag = (first.components(separatedBy: ":").first ?? "").trimmingCharacters(in: .whitespaces)
+        if flag.hasPrefix(name + " ") { return flag }
+        if name == "sleep" { return "sleep 1s" }
+        if ["less", "top", "chmod", "ps"].contains(name) { return example }
+        return flag.isEmpty ? name : name + " " + flag
     }
-    public static let entries: [CommandReference] = [
+    public static let entries: [CommandReference] = (baseEntries + additionalEntries).map { item in
+        CommandReference(name: item.name, category: referenceCategories[item.name] ?? item.category, summary: item.summary, example: item.example, options: item.options, note: item.note)
+    }
+    public func matches(_ query: String) -> Bool {
+        let text = [name, category, summary, example, options, note].joined(separator: " ").precomposedStringWithCompatibilityMapping
+        return query.precomposedStringWithCompatibilityMapping.split(whereSeparator: { $0.isWhitespace }).allSatisfy { text.localizedStandardContains(String($0)) }
+    }
+    static let baseEntries: [CommandReference] = [
         .init(name: "pwd", category: "ファイル", summary: "現在の作業ディレクトリを表示", example: "pwd -P", options: "-L: 論理パス、-P: シンボリックリンク解決後", note: "シェル組込み版と外部コマンドで動作が異なる場合があります。"),
         .init(name: "ls", category: "ファイル", summary: "ファイル一覧を表示", example: "ls -lah /var/log", options: "-l: 詳細、-a: 隠しファイル、-h: 読みやすい容量", note: "GNU coreutils版を想定。"),
         .init(name: "cd", category: "ファイル", summary: "作業ディレクトリを変更", example: "cd /var/log", options: "cd -: 前のディレクトリ、cd: ホーム", note: "シェルの組込みコマンドです。"),

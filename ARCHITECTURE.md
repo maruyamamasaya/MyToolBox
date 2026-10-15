@@ -15,7 +15,7 @@ AppDelegate → ツール一覧NSStatusItem / 数値NSStatusItem → 単一NSPop
 ```
 
 ## Technology Stack / Important Dependencies
-Swift 5 language mode（Xcode 26.6 / Swift 6.3.3で検証）、macOS 14+ arm64。SwiftUI、AppKit、AVFoundation、CoreAudio、AudioToolbox、Charts、Metal（基本情報のみ）、IOKit、ServiceManagement、SystemConfiguration。第三者依存なし。Python 3標準ライブラリは検証とXcodeプロジェクト生成のみ。
+Swift 5 language mode（Xcode 26.6 / Swift 6.3.3で検証）、macOS 14+ arm64。SwiftUI、AppKit、AVFoundation、CoreAudio、AudioToolbox、Charts、Metal（基本情報のみ）、IOKit、ServiceManagement、SystemConfiguration。SQLite3はmacOS同梱ライブラリを使用。第三者依存なし。Python 3標準ライブラリは検証とXcodeプロジェクト生成のみ。
 
 ## Directory Structure / Main Components
 - `Sources/MyToolBox/App/ToolCatalog.swift`：実装済みツールのID・名称・説明・アイコン。AppDelegateが明示的に画面へ振り分ける。
@@ -59,4 +59,6 @@ User-Agent Viewerは非永続WKWebViewへ同梱HTML文字列だけを読み込�
 
 時間ツールはUtilityTimerの日時差分をTimerBoardModel／FocusTimerModelが0.25秒ごとに表示へ反映する。ボードは設定・実行基準日時をローカル保存し、close時に一時停止。TimeCalculationは勤務時間・時間帯合計の純粋計算。詳細は[時間ツール](docs/TIME_TOOLS.md)。
 
-サーバー・ネットワーク・日常計算11本は純粋ロジックをMonitorKit、専用画面をMyToolBox/Toolsへ分離。ネットワーク・サーバーカテゴリを追加。コマンド実行・通信は行わず、ツリー構成のみUserDefaultsへ自動保存・明示JSON保存。詳細は[仕様](docs/SERVER_AND_EVERYDAY_TOOLS.md)。
+サーバー・ネットワーク・日常計算11本は純粋ロジックをMonitorKit、専用画面をMyToolBox/Toolsへ分離。ネットワーク・サーバーカテゴリを追加。コマンド実行・通信は行わず、ツリー構成・開閉状態と辞典のお気に入り/履歴をUserDefaultsへ保存、ツリーは明示JSON保存。詳細は[仕様](docs/SERVER_AND_EVERYDAY_TOOLS.md)。
+
+SQLツールは字句ベースの整形・基本SELECT説明と、SQLPlaygroundWorker actorが所有するメモリ内SQLiteを共有入力の3タブに統合。SQLの外部DB・ファイル操作はauthorizerで拒否し、時間・出力・DB容量を制限する。詳細は[仕様](docs/SQL_TOOLS.md)。

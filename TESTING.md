@@ -200,4 +200,14 @@ ImageResizerTestsでPNG寸法/透明・JPEG白背景/形式・EXIF向き補正�
 
 ハッシュ・テストデータ生成：ユーザー指示で全検証を保留。[後日テスト](docs/DEVELOPER_GENERATORS.md)にSHA既知値・UUID v4・生成制約・CSV往復・キャンセル・UI確認を集約。
 
-サーバー・ネットワーク・日常計算11本：今回はユーザー指示で全検証を保留。[マージ後のテスト項目](docs/SERVER_AND_EVERYDAY_TEST_PLAN.md)にロジック境界値・正常/異常系・3テーマ・永続化・ビルドの未実施項目を集約。
+サーバー・ネットワーク・日常計算11本：今回はユーザー指示で全検証を保留。[マージ後のテスト項目](docs/SERVER_AND_EVERYDAY_TEST_PLAN.md)にロジック境界値・正常/異常系・3テーマ・永続化・ビルドの未実施項目を集約。参照元の不足補完分は[照合記録](docs/SERVER_AND_EVERYDAY_PARITY.md)に追加。
+
+ログハイライター：LogHighlighterTestsでレベル判定・改行・前後行・検索を検証。実機では3テーマ、検索の前後移動、フィルター後のコピー、折り返し、2 MB超過時の案内を確認する。
+
+JSONツール：`JSONWorkspaceTests`で数値精度・JSON往復・構文／Unicode／重複キー・CRLFと行列・入力上限・部分木編集を検証。`tools/RenderJSONWorkspace.swift`でモデル操作と3モード×3テーマを合成描画。実機受け入れは[JSON仕様](docs/JSON_TOOLS.md)。
+
+## 正規表現・表・CSV統計
+
+`RegexAndSmallDataTests.swift`でUnicode・キャプチャ・置換・フラグ・空一致・不正入力・部品生成・表の各形式・欠損／混在／重複／数値統計を検証。描画はRenderLocalToolsのコンパイル末尾を`tools/RenderDataWorkbench.swift -o build/render-data-workbench`へ置換し実行。4画面×3テーマを確認する。手動ではテスターの入力変更／コピー、条件追加／並べ替え、表の編集／保存、CSV読込／NULL条件変更を確認する。[仕様](docs/DATA_WORKBENCH.md)。
+
+SQLツール：SQLToolsTestsで引用保持・整形の実行結果一致・SELECT説明・メモリ内SQLite・ロールバック・外部操作拒否・実行上限を検証。[実機確認項目](docs/SQL_TOOLS.md)。

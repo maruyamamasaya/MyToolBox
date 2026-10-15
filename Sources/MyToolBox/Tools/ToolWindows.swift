@@ -12,6 +12,16 @@ import SwiftUI
         if let existing = windows[tool] { existing.window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return }
         let controller: ToolWindow
         switch tool {
+        case .sqlWorkspace:
+            let model = SQLWorkspaceModel()
+            controller = ToolWindow(title: tool.title, view: SQLWorkspaceView(model: model))
+            controller.cleanup = { model.stop() }
+        case .regexTester: controller = ToolWindow(title: tool.title, view: RegexTesterView())
+        case .regexBuilder: controller = ToolWindow(title: tool.title, view: RegexBuilderView())
+        case .tableBuilder: controller = ToolWindow(title: tool.title, view: TableBuilderView())
+        case .csvStatistics: controller = ToolWindow(title: tool.title, view: CSVStatisticsView())
+        case .jsonWorkspace: controller = ToolWindow(title: tool.title, view: JSONWorkspaceView())
+        case .logHighlighter: controller = ToolWindow(title: tool.title, view: LogHighlighterView())
         case .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator: controller = ToolWindow(title: tool.title, view: EverydayCalculatorView(tool: tool))
         case .cidrAnalyzer: controller = ToolWindow(title: tool.title, view: CIDRAnalyzerView())
         case .dnsRecordBuilder: controller = ToolWindow(title: tool.title, view: DNSRecordBuilderView())

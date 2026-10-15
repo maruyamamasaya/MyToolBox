@@ -13,12 +13,21 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 
 /// Installed tools only; each route has a native implementation.
 enum ToolID: String, CaseIterable, Identifiable {
-    case hashGenerator, testDataGenerator
+    case sqlWorkspace
+    case regexTester, regexBuilder, tableBuilder, csvStatistics
+    case jsonWorkspace, logHighlighter, hashGenerator, testDataGenerator
     case cidrAnalyzer, dnsRecordBuilder, unitConverter, percentageCalculator, simpleCalculator, numberCalculator, cronReader, linuxCommands, chmodCalculator, directoryTree, unixTimeConverter
     case randomNumberGenerator, portNumberFinder, httpStatusViewer, localMemo, systemMonitor, businessDays, audioCheck, microphoneCheck, csvViewer, csvEditor, sequentialText, clipboardFormatter, textCleaner, lineTools, stringReplacer, comparison, textCodec, colorPalette, userAgent, imageResizer, byteConverter, numberBaseConverter, bandwidthCalculator, raidCalculator, slaCalculator, pomodoroTimer, timerBoard, meetingTimer, timeCalculator
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .sqlWorkspace: return "SQLツール"
+        case .regexTester: return "正規表現テスター"
+        case .regexBuilder: return "正規表現ビルダー"
+        case .tableBuilder: return "表ビルダー"
+        case .csvStatistics: return "CSV統計"
+        case .jsonWorkspace: return "JSONツール"
+        case .logHighlighter: return "ログハイライター"
         case .cidrAnalyzer: return "CIDR解析"
         case .dnsRecordBuilder: return "DNSレコード作成"
         case .unitConverter: return "単位変換"
@@ -65,6 +74,13 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var subtitle: String {
         switch self {
+        case .sqlWorkspace: return "SQL整形・SELECTの説明・SQLiteで試す"
+        case .regexTester: return "一致ハイライト・キャプチャ・置換プレビュー"
+        case .regexBuilder: return "条件を並べて正規表現を作成・その場でテスト"
+        case .tableBuilder: return "表を編集してMarkdown・HTML・CSVへ"
+        case .csvStatistics: return "欠損・重複・列ごとの型・数値集計"
+        case .jsonWorkspace: return "JSONの構造ビュー・整形・ビルダー"
+        case .logHighlighter: return "ログ色分け・レベル絞り込み・検索・前後行表示"
         case .cidrAnalyzer: return "IPv4の範囲・グループ・包含関係"
         case .dnsRecordBuilder: return "A・AAAA・CNAME・MX・TXTのゾーン出力"
         case .unitConverter: return "長さ・重さ・温度など10カテゴリを換算"
@@ -72,7 +88,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .simpleCalculator: return "括弧・四則演算・計算履歴"
         case .numberCalculator: return "合計・平均・中央値・最大・最小・範囲"
         case .cronReader: return "5フィールドの条件・次回予定・式の作成"
-        case .linuxCommands: return "主要40コマンドの用途・オプションを検索"
+        case .linuxCommands: return "Linux・Docker・Git・Kubernetesなどを検索"
         case .chmodCalculator: return "8進数・rwx・特殊ビットを相互変換"
         case .directoryTree: return "構成編集・7出力形式・JSON保存"
         case .unixTimeConverter: return "秒・ミリ秒・日本時間・UTCの相互変換"
@@ -111,6 +127,13 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var symbol: String {
         switch self {
+        case .sqlWorkspace: return "cylinder.split.1x2"
+        case .regexTester: return "text.magnifyingglass"
+        case .regexBuilder: return "wand.and.stars"
+        case .tableBuilder: return "tablecells"
+        case .csvStatistics: return "chart.bar.xaxis"
+        case .jsonWorkspace: return "curlybraces"
+        case .logHighlighter: return "text.magnifyingglass"
         case .cidrAnalyzer: return "network"
         case .dnsRecordBuilder: return "server.rack"
         case .unitConverter: return "arrow.left.arrow.right"
@@ -160,9 +183,11 @@ enum ToolID: String, CaseIterable, Identifiable {
 extension ToolID {
     var category: ToolCategory {
         switch self {
+        case .sqlWorkspace: return .server
+        case .regexTester, .regexBuilder, .tableBuilder, .csvStatistics: return .text
         case .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator: return .calculation
-        case .cidrAnalyzer, .dnsRecordBuilder, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter: return .server
-        case .hashGenerator, .testDataGenerator, .localMemo, .csvViewer, .csvEditor, .sequentialText, .clipboardFormatter, .textCleaner, .lineTools, .stringReplacer, .comparison, .textCodec: return .text
+        case .logHighlighter, .cidrAnalyzer, .dnsRecordBuilder, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter: return .server
+        case .jsonWorkspace, .hashGenerator, .testDataGenerator, .localMemo, .csvViewer, .csvEditor, .sequentialText, .clipboardFormatter, .textCleaner, .lineTools, .stringReplacer, .comparison, .textCodec: return .text
         case .randomNumberGenerator, .byteConverter, .numberBaseConverter, .bandwidthCalculator, .raidCalculator, .slaCalculator: return .calculation
         case .colorPalette, .imageResizer: return .design
         case .portNumberFinder, .httpStatusViewer, .systemMonitor, .audioCheck, .microphoneCheck, .userAgent: return .system
@@ -172,7 +197,8 @@ extension ToolID {
     func matches(_ query: String) -> Bool {
         let terms = query.split(whereSeparator: { $0.isWhitespace })
         let aliases = self == .testDataGenerator ? " dummy-data-generator uuid-generator text-generator ダミーデータ UUID テキスト生成" : ""
-        let searchable = title + " " + subtitle + " " + rawValue + " " + category.rawValue + aliases
+        let sqlAliases = self == .sqlWorkspace ? " sql-formatter sql-explainer sql-playground SQLite SQLフォーマッター SQL説明 SQL実行" : ""
+        let searchable = sqlAliases + title + " " + subtitle + " " + rawValue + " " + category.rawValue + aliases
         return terms.allSatisfy { searchable.localizedStandardContains(String($0)) }
     }
 }

@@ -16,6 +16,13 @@ public enum EverydayCalculators {
         guard let value = Double(normalized), value.isFinite else { throw Failure.invalid("有限の数値を入力してください。") }
         return value
     }
+    /// Percentage fields accept the same pasted currency/percent notation as the reference.
+    public static func percentageNumber(_ text: String) throws -> Double {
+        let normalized = text.precomposedStringWithCompatibilityMapping
+            .replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "ー", with: "-")
+        let stripped = normalized.filter { !$0.isWhitespace && !",¥￥円%".contains($0) }
+        return try number(stripped)
+    }
     public static func finite(_ value: Double) throws -> Double {
         guard value.isFinite else { throw Failure.invalid("計算結果が数値の範囲を超えています。") }; return value
     }
@@ -101,7 +108,7 @@ public enum EverydayCalculators {
     }
     private struct ExpressionParser {
         var chars: [Character]; var index = 0; var depth = 0
-        init(_ text: String) { chars = Array(text.replacingOccurrences(of: "×", with: "*").replacingOccurrences(of: "÷", with: "/").replacingOccurrences(of: "−", with: "-")) }
+        init(_ text: String) { chars = Array(text.replacingOccurrences(of: "×", with: "*").replacingOccurrences(of: "✕", with: "*").replacingOccurrences(of: "÷", with: "/").replacingOccurrences(of: "−", with: "-")) }
         mutating func space() { while index < chars.count && chars[index].isWhitespace { index += 1 } }
         mutating func take(_ char: Character) -> Bool { space(); if index < chars.count && chars[index] == char { index += 1; return true }; return false }
         mutating func run() throws -> Double { let value = try sum(); space(); guard index == chars.count else { throw Failure.invalid("式に使用できない文字があります。") }; return try finite(value) }

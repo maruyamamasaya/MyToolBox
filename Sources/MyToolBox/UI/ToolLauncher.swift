@@ -152,6 +152,10 @@ struct ToolLauncher: View {
 
     private func color(_ tool: ToolID) -> Color {
         switch tool {
+        case .sqlWorkspace: return .indigo
+        case .regexTester, .regexBuilder: return .indigo
+        case .tableBuilder, .csvStatistics: return .teal
+        case .jsonWorkspace, .logHighlighter: return .orange
         case .cidrAnalyzer, .dnsRecordBuilder, .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter: return .cyan
         case .byteConverter, .numberBaseConverter, .bandwidthCalculator, .raidCalculator, .slaCalculator: return .cyan
         case .randomNumberGenerator: return .purple

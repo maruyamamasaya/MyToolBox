@@ -45,7 +45,15 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 
 - [ハッシュ・テストデータ生成](docs/DEVELOPER_GENERATORS.md)：4参照ツールを2入口へ統合。SHA／文章／文字列／CSV／UUID v4。ビルド・テスト・.app更新は保留。
 
-- [サーバー・ネットワーク・日常計算11本](docs/SERVER_AND_EVERYDAY_TOOLS.md)：CIDR・DNS・単位・割合・電卓・数値集計とLinux系5本を追加。ユーザー指定でビルド／テスト／実機／.app更新は保留。
+- [サーバー・ネットワーク・日常計算11本](docs/SERVER_AND_EVERYDAY_TOOLS.md)：CIDR・DNS・単位・割合・電卓・数値集計とLinux系5本。参照元と再照合し、辞典162件＋補足3件・ツリー操作/JSON互換・入力形式などを補完。ユーザー指定でビルド／テスト／実機／.app更新は保留。
+
+- [ログハイライター](docs/LOG_HIGHLIGHTER.md)：ログレベル色分け・絞り込み・前後行・検索移動・カスタム強調・コピー。実機UI確認は未実施。
+
+- [JSONツール](docs/JSON_TOOLS.md)：共有入力の構造ビュー・整形・ビルダー。数値の正確な保持・JSON Pointer・型付き編集に対応。検証状況はsessionsを参照。
+
+- [正規表現・表・CSV統計の4ツール](docs/DATA_WORKBENCH.md)：テスター、条件ビルダー、Markdown/HTML/CSV出力、列別統計。小さなデータ向け。Fast／Full・3テーマ描画成功、実機操作と/Applications更新は未実施。
+
+- [SQLツール](docs/SQL_TOOLS.md)：簡易整形・基本SELECTの定型説明・一時SQLite実行を3タブに統合。実機UI確認・.app配置は未実施。
 
 ## 進行中
 [ツール集のロードマップ](docs/ROADMAP.md)に沿って機能を拡張。実機UI操作・長時間検証、[可視化案](docs/VISUALIZATION_ROADMAP.md)を次段階に残す。

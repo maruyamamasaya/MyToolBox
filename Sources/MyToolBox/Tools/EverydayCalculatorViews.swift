@@ -32,25 +32,36 @@ struct UtilityField: View {
 struct EverydayCalculatorView: View {
     let tool: ToolID
     @State private var mode = EverydayCalculators.PercentageMode.change
-    @State private var a = "1000", b = "1250"
+    @State private var percentageInputs: [EverydayCalculators.PercentageMode: [String]] = [.change: ["1000", "1250"]]
+    private var a: Binding<String> { percentageField(0) }
+    private var b: Binding<String> { percentageField(1) }
+    private func percentageField(_ index: Int) -> Binding<String> {
+        Binding(get: { percentageInputs[mode]?[index] ?? "" }, set: { value in
+            var fields = percentageInputs[mode] ?? ["", ""]
+            fields[index] = value; percentageInputs[mode] = fields
+        })
+    }
     @State private var expression = "1000 + 250 × 2"
     @State private var history: [String] = []
     @State private var numbers = "11\n19\n38\n42\n46"
     @State private var summary: Result<EverydayCalculators.Summary, Error>?
     @State private var group = 0
-    @State private var value = "100", from = "mm", to = "cm", rate = ""
+    @State private var value = "100"
+    @State private var from = "mm"
+    @State private var to = "cm"
+    @State private var rate = ""
     @State private var binary = true
     @State private var digits = 2
     private typealias C = EverydayCalculators
     private var result: Result<[(String, String)], Error> {
         Result {
             switch tool {
-            case .percentageCalculator: return try C.percentage(mode, a: C.number(a), b: C.number(b)).map { ($0.0, C.display($0.1)) }
+            case .percentageCalculator: return try C.percentage(mode, a: C.percentageNumber(a.wrappedValue), b: C.percentageNumber(b.wrappedValue)).map { ($0.0, C.display($0.1)) }
             case .simpleCalculator: return [("結果", C.display(try C.expression(expression)))]
             case .unitConverter:
                 let r = group == 9 && from != to ? try C.number(rate) : nil
                 let answer = try C.convert(C.number(value), group: group, from: from, to: to, binary: binary, rate: r)
-                return [("変換結果", C.display(answer, digits: digits) + " " + to)]
+                return [("変換結果", C.display(answer, digits: digits) + " " + to), ("換算式", value + " " + from + " = " + C.display(answer, digits: digits) + " " + to)]
             default: return []
             }
         }
@@ -67,8 +78,10 @@ struct EverydayCalculatorView: View {
                 } else { UtilityResult(result: result) }
                 if tool == .simpleCalculator && !history.isEmpty {
                     ToolCard { VStack(alignment: .leading, spacing: 10) {
-                        HStack { Text("履歴（この画面内のみ・最大20件）"); Spacer(); Button("履歴を削除") { history = [] } }
-                        ForEach(history.indices, id: \.self) { i in Text(history[i]).textSelection(.enabled) }
+                        HStack { Text("履歴（画面を閉じるまで保持）"); Spacer(); Button("履歴を削除") { history = [] } }
+                        ForEach(history.indices, id: \.self) { i in
+                            HStack { Text(history[i]).textSelection(.enabled); Spacer(); Button("コピー") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(history[i], forType: .string) } }
+                        }
                     } }
                 }
                 ToolFootnote(text: footnote)
@@ -79,9 +92,9 @@ struct EverydayCalculatorView: View {
         switch tool {
         case .percentageCalculator:
             ThemePicker("計算方法", selection: $mode, options: C.PercentageMode.allCases.map { ($0, $0.rawValue) }, tabs: true)
-            UtilityField(title: mode == .reverse ? "増減率（%）" : mode == .ratio ? "全体" : mode == .percent ? "元の値" : "変更前", text: $a)
-            UtilityField(title: mode == .reverse ? "結果" : mode == .ratio ? "一部" : mode == .percent ? "割合（%）" : "変更後", text: $b)
-            Button("クリア") { a = ""; b = "" }
+            UtilityField(title: mode == .reverse ? "増減率（%）" : mode == .ratio ? "全体" : mode == .percent ? "元の値" : "変更前", text: a)
+            UtilityField(title: mode == .reverse ? "結果" : mode == .ratio ? "一部" : mode == .percent ? "割合（%）" : "変更後", text: b)
+            Button("クリア") { percentageInputs[mode] = ["", ""] }
         case .simpleCalculator:
             UtilityField(title: "計算式", text: $expression).onSubmit { remember() }
             HStack { Button("計算・履歴に追加") { remember() }; Button("クリア") { expression = "" } }
@@ -111,14 +124,14 @@ struct EverydayCalculatorView: View {
         }
     }
     private func remember() {
-        if let answer = try? C.expression(expression) { history.insert(expression + " = " + C.display(answer), at: 0); history = Array(history.prefix(20)) }
+        if let answer = try? C.expression(expression) { history.insert(expression + " = " + C.display(answer), at: 0) }
     }
     private var footnote: String {
         switch tool {
         case .unitConverter: return "通貨レートは手入力。畳は1.62m²、gallonは米液量。小数は近似値で、表示桁で丸めます。極小値は指数表記。入力は端末内だけで処理します。"
         case .numberCalculator: return "カンマは数値の区切りです。1,000は1と0の2件として扱うため、千区切りなしで入力してください。数値でない入力は除外件数と内容を表示。最大20,000件・500KB。"
-        case .simpleCalculator: return "+ − × ÷、括弧、単項符号、指数表記に対応。掛け算・割り算を優先します。最大1,000文字。小数は近似値です。"
-        default: return "増減率は変更前を分母として計算します。負の数にも対応。分母0・逆算−100%は計算できません。小数は近似値です。"
+        case .simpleCalculator: return "+ − × ✕ ÷、括弧、単項符号、指数表記に対応。掛け算・割り算を優先します。最大1,000文字。小数は近似値です。"
+        default: return "全角数字・円・¥・%・空白付き入力に対応。各モードの入力は個別に保持。増減率は変更前を分母として計算します。負の数にも対応。分母0・逆算−100%は計算できません。小数は近似値です。"
         }
     }
 }

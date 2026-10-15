@@ -46,6 +46,7 @@ def main():
             CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0;
             CODE_SIGN_ENTITLEMENTS = Resources/MyToolBox.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual;
             ENABLE_APP_SANDBOX = NO; ENABLE_HARDENED_RUNTIME = YES;
+            OTHER_LDFLAGS = "$(inherited) -lsqlite3";
             LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
         }};'''))
     configlist = obj('configlist', f'isa = XCConfigurationList; buildConfigurations = ({",".join(configs)},); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')

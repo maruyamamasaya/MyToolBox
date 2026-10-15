@@ -91,3 +91,13 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 
 - [GitHubへの保存](2026-10-15-40-github-push.md)
 - [サーバー・ネットワーク・日常計算11本（テスト保留）](2026-10-15-38-server-everyday-tools.md)
+
+- [ログハイライター](2026-10-15-41-log-highlighter.md)
+- [JSONの構造・整形・ビルダー](2026-10-15-42-json-workspace.md)
+
+- [正規表現・表・CSV統計の4ツール](2026-10-15-43-data-workbench.md)
+
+- [SQLツール](2026-10-15-44-sql-workspace.md)
+- [11ツールの参照機能照合・不足補完（テスト保留）](2026-10-15-45-server-everyday-parity.md)
+
+- [追加ツール一式のコミット・プッシュ](2026-10-15-46-commit-tool-additions.md)
