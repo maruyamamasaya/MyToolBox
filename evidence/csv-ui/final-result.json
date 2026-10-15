@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-15",
+  "file": "roundtrip-final.csv",
+  "rows": 4,
+  "columns": 3,
+  "matchesExpected": true,
+  "UTF8BOM": true,
+  "uiVerified": [
+    "inline double click then paste",
+    "save without pressing Tab or Return",
+    "save as separate file",
+    "reopen through NSOpenPanel",
+    "edited value and quoted/newline cells preserved",
+    "paste panel and inspector reachable by scrolling",
+    "saved window closes without unsaved warning"
+  ],
+  "fixes": [
+    "scrollable CSV content with fixed header",
+    "do not reselect the already selected table row",
+    "explicit double-click editor focus",
+    "commit active editor before save/sort/structure changes",
+    "encoded file size bounded for reloading"
+  ]
+}

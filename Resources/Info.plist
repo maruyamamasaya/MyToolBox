@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIconFile</key>
+	<string>MyToolBox.icns</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>マイクチェックで入力レベルを確認し、最大10秒の録音をメモリ内で再生します。外部送信しません。</string>
+</dict>
+</plist>

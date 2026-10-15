@@ -1,0 +1,15 @@
+{
+  "uiSteps": [
+    "paste CSV",
+    "edit multiline cell",
+    "save through NSSavePanel",
+    "reopen through NSOpenPanel",
+    "compare displayed cells"
+  ],
+  "file": "roundtrip-before-fix.csv",
+  "rows": 4,
+  "columns": 3,
+  "BOM": true,
+  "matchesExpected": true,
+  "foundIssue": "paste and inspector together overflowed short window"
+}
