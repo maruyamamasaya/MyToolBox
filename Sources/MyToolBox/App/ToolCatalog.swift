@@ -13,6 +13,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 
 /// Installed tools only; each route has a native implementation.
 enum ToolID: String, CaseIterable, Identifiable {
+    case personalCalendar
     case sqlWorkspace
     case regexTester, regexBuilder, tableBuilder, csvStatistics
     case jsonWorkspace, logHighlighter, hashGenerator, testDataGenerator
@@ -21,6 +22,7 @@ enum ToolID: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .personalCalendar: return "マイカレンダー"
         case .sqlWorkspace: return "SQLツール"
         case .regexTester: return "正規表現テスター"
         case .regexBuilder: return "正規表現ビルダー"
@@ -55,7 +57,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .testDataGenerator: return "テストデータ生成"
         case .localMemo: return "ローカルメモ"
         case .systemMonitor: return "システムモニター"
-        case .businessDays: return "カレンダー"
+        case .businessDays: return "日程調整・営業日"
         case .audioCheck: return "オーディオチェック"
         case .microphoneCheck: return "マイクチェック"
         case .csvViewer: return "CSVビューワー"
@@ -74,6 +76,7 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var subtitle: String {
         switch self {
+        case .personalCalendar: return "月表示・複数の目標日・残り日数・カウントダウン"
         case .sqlWorkspace: return "SQL整形・SELECTの説明・SQLiteで試す"
         case .regexTester: return "一致ハイライト・キャプチャ・置換プレビュー"
         case .regexBuilder: return "条件を並べて正規表現を作成・その場でテスト"
@@ -127,6 +130,7 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var symbol: String {
         switch self {
+        case .personalCalendar: return "calendar.badge.clock"
         case .sqlWorkspace: return "cylinder.split.1x2"
         case .regexTester: return "text.magnifyingglass"
         case .regexBuilder: return "wand.and.stars"
@@ -191,7 +195,7 @@ extension ToolID {
         case .randomNumberGenerator, .byteConverter, .numberBaseConverter, .bandwidthCalculator, .raidCalculator, .slaCalculator: return .calculation
         case .colorPalette, .imageResizer: return .design
         case .portNumberFinder, .httpStatusViewer, .systemMonitor, .audioCheck, .microphoneCheck, .userAgent: return .system
-        case .businessDays, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .calendar
+        case .personalCalendar, .businessDays, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .calendar
         }
     }
     func matches(_ query: String) -> Bool {

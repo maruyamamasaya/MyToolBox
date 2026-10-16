@@ -89,6 +89,7 @@ struct ToolCalendar: View {
     var onSelect: ((Date) -> Void)? = nil
     var showsAdjacentDays = false
     var showsHolidayNames = false
+    var showsCellBorders = false
     var rowHeight: CGFloat = 29
     private var displayedMonth: Date {
         get { visibleMonth?.wrappedValue ?? month }
@@ -142,6 +143,7 @@ struct ToolCalendar: View {
                     .foregroundStyle(selected ? (theme.classic ? Color.white : Color.black) : holiday != nil || cell % 7 == 0 ? .red.opacity(0.85) : cell % 7 == 6 ? .blue : .primary)
                     .background(selected ? (theme.classic ? theme.accent : Color.mint) : Color.clear, in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 8))
                     .overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 8).strokeBorder(calendar.isDateInToday(date) && !selected ? (theme.classic ? theme.accent : Color.mint).opacity(0.7) : .clear))
+                    .overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 8).strokeBorder(showsCellBorders ? Color.primary.opacity(theme.classic ? 0.3 : 0.2) : .clear, lineWidth: 1))
                     .contentShape(Rectangle())
             }.buttonStyle(ThemeButtonStyle(plain: true)).opacity(day > 0 && day <= days ? 1 : 0.45).accessibilityValue(selected ? "選択中" : "未選択").help(holiday ?? BusinessDays.key(date)).accessibilityLabel(BusinessDays.key(date) + (holiday.map { " " + $0 } ?? ""))
         } else { Color.clear }

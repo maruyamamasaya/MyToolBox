@@ -77,3 +77,5 @@ JSON：`JSONWorkspace.swift`（数値保持パーサ・部分木編集・JSONWor
 SQL：`SQLText.swift`（字句・整形・説明）／`SQLPlayground.swift`（SQLite・SQLPlaygroundWorker）→ `SQLWorkspaceView.swift` → ToolCatalog／ToolWindows。`SQLToolsTests.swift`。[仕様](docs/SQL_TOOLS.md)。
 
 追加ツール回帰：`Tests/MonitorKitTests/AddedToolsTests.swift`／`ServerAndEverydayTests.swift`。メモ・生成・検索、サーバー／日常計算を検証。`tools/VerifyAddedTools.swift`で隔離モデル・3テーマ描画。[結果](sessions/2026-10-15-49-batch-tool-validation.md)。
+
+マイカレンダー：`PersonalCountdown.swift`（日数・時間目標・保存）→ `PersonalCalendarView.swift` → ToolCatalog／ToolWindows。`PersonalCountdownTests.swift`、`tools/VerifyPersonalCalendar.swift`。[仕様](docs/PERSONAL_CALENDAR.md)。

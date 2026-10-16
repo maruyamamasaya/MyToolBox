@@ -126,3 +126,11 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [ローカルメモの入力画面を簡素化](2026-10-15-55-memo-simple-editor.md)
 
 - [未確認項目の引き継ぎ・再開チェックリスト](2026-10-15-56-resume-checklist.md)
+
+- [マイカレンダーと複数カウントダウン](2026-10-16-01-personal-calendar.md)
+
+- [マイカレンダーの実画面確認・最新版反映](2026-10-16-02-calendar-live-install.md)
+
+- [カレンダーの日本語表記・日付マスの枠線](2026-10-16-03-calendar-japanese-borders.md)
+
+- [画像の複数選択・一括リサイズ](2026-10-16-04-image-batch.md)

@@ -12,6 +12,7 @@ import SwiftUI
         if let existing = windows[tool] { existing.window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return }
         let controller: ToolWindow
         switch tool {
+        case .personalCalendar: controller = ToolWindow(title: tool.title, view: PersonalCalendarView())
         case .sqlWorkspace:
             let model = SQLWorkspaceModel()
             controller = ToolWindow(title: tool.title, view: SQLWorkspaceView(model: model))

@@ -86,6 +86,40 @@ final class ImageResizerTests: XCTestCase {
         XCTAssertThrowsError(try ImageResizer.save(data, to: hardlink, protecting: original))
         XCTAssertEqual(try Data(contentsOf: original), bytes)
     }
+    func testBatchSizingForMixedAspectRatios() throws {
+        let width = ImageResizer.BatchSizing.pixels(.init(width: 4, height: 2), keepRatio: true, widthBased: true)
+        XCTAssertEqual(try width.size(width: 8, height: 4), .init(width: 4, height: 2))
+        XCTAssertEqual(try width.size(width: 4, height: 8), .init(width: 4, height: 8))
+        let height = ImageResizer.BatchSizing.pixels(.init(width: 4, height: 2), keepRatio: true, widthBased: false)
+        XCTAssertEqual(try height.size(width: 4, height: 8), .init(width: 1, height: 2))
+        let fixed = ImageResizer.BatchSizing.pixels(.init(width: 4, height: 2), keepRatio: false, widthBased: true)
+        XCTAssertEqual(try fixed.size(width: 4, height: 8), .init(width: 4, height: 2))
+        XCTAssertEqual(try ImageResizer.BatchSizing.scale(0.5).size(width: 4, height: 8), .init(width: 2, height: 4))
+        XCTAssertThrowsError(try width.size(width: 1, height: 10000))
+    }
+    func testBatchFolderDuplicateNamesAndFailureIsolation() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let first = root.appendingPathComponent("a"), second = root.appendingPathComponent("b")
+        for folder in [first, second] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+        let one = first.appendingPathComponent("same.png"), two = second.appendingPathComponent("same.png")
+        let original = try fixture(); try original.write(to: one); try original.write(to: two)
+        let directory = try ImageResizer.createBatchDirectory(in: root)
+        XCTAssertNotEqual(directory, try ImageResizer.createBatchDirectory(in: root))
+        let sizing = ImageResizer.BatchSizing.scale(0.5)
+        let savedOne = try ImageResizer.resizeBatchFile(one, index: 0, directory: directory, sizing: sizing, format: .png, quality: 0.85)
+        let broken = root.appendingPathComponent("bad.png"); try Data("bad".utf8).write(to: broken)
+        XCTAssertThrowsError(try ImageResizer.resizeBatchFile(broken, index: 1, directory: directory, sizing: sizing, format: .png, quality: 0.85))
+        let savedTwo = try ImageResizer.resizeBatchFile(two, index: 2, directory: directory, sizing: sizing, format: .jpeg, quality: 0.85)
+        XCTAssertNotEqual(savedOne, savedTwo)
+        XCTAssertEqual(try ImageResizer.read(savedOne).width, 4)
+        XCTAssertEqual(try ImageResizer.read(savedTwo).height, 2)
+        XCTAssertEqual(try Data(contentsOf: one), original); XCTAssertEqual(try Data(contentsOf: two), original)
+        let savedBytes = try Data(contentsOf: savedOne)
+        XCTAssertThrowsError(try ImageResizer.resizeBatchFile(one, index: 0, directory: directory, sizing: sizing, format: .png, quality: 0.85))
+        XCTAssertEqual(try Data(contentsOf: savedOne), savedBytes)
+    }
     func testMultiPageImageRejected() throws {
         let source = try XCTUnwrap(CGImageSourceCreateWithData(try fixture() as CFData, nil))
         let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))

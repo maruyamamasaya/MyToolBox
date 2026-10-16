@@ -62,3 +62,5 @@ User-Agent Viewerは非永続WKWebViewへ同梱HTML文字列だけを読み込�
 サーバー・ネットワーク・日常計算11本は純粋ロジックをMonitorKit、専用画面をMyToolBox/Toolsへ分離。ネットワーク・サーバーカテゴリを追加。コマンド実行・通信は行わず、ツリー構成・開閉状態と辞典のお気に入り/履歴をUserDefaultsへ保存、ツリーは明示JSON保存。詳細は[仕様](docs/SERVER_AND_EVERYDAY_TOOLS.md)。
 
 SQLツールは字句ベースの整形・基本SELECT説明と、SQLPlaygroundWorker actorが所有するメモリ内SQLiteを共有入力の3タブに統合。SQLの外部DB・ファイル操作はauthorizerで拒否し、時間・出力・DB容量を制限する。詳細は[仕様](docs/SQL_TOOLS.md)。
+
+マイカレンダーは既存の予定調整から独立。PersonalCountdownが日付／時間目標と日本時間の日数計算、PersonalCountdownStoreがUserDefaults保存、PersonalCalendarModelが編集確定と読込エラー保護を担当。月表示はToolCalendarと同梱祝日を再利用。[仕様](docs/PERSONAL_CALENDAR.md)。

@@ -1,15 +1,16 @@
 # Current
 
-更新日：2026-10-15（日本時間）
+更新日：2026-10-16（日本時間）
 
 ## Project
 MyToolBox：ローカル完結のmacOSツール集。最初のツールはM1 Max向けシステムモニター。目的はParallels Toolboxからの段階的な移行。
 
 ## 現在のフェーズ
 Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テスト・ビルドを実行。移行完了ではない。
-修正済み49ツールを/Applicationsへ反映・再起動済み。単体140件／Full・署名・全ファイル一致確認。直近の修正と配置は[実機確認記録](sessions/2026-10-15-52-remaining-live-fixes.md)。
+50ツールを/Applicationsへ反映・再起動済み。単体146件／Full・署名・全ファイル一致確認。直近は[画像一括リサイズの追加・配置](sessions/2026-10-16-04-image-batch.md)（実機テストは依頼により省略）。
 
 ## 実装済み
+- [マイカレンダー](docs/PERSONAL_CALENDAR.md)：独立した月表示と、自分で複数設定できる日付／時間目標の残り日数。ローカル保存・編集・削除。既存の予定調整は「日程調整・営業日」へ表示名変更。
 - [共通3テーマ](docs/THEMES.md)：Blue Cosmos／Living Aurora／Windows 98。設定・一覧・各ツールから切替、開いている全画面へ反映・永続化。
 - 専用メニューアイコンから実装済みツールを6カテゴリで表示。カテゴリ絞り込み・名前／用途の検索、星でお気に入り登録・先頭表示・ドラッグ並べ替え・再起動後の保持に対応。従来の数値メニューも維持。通常画面の終了ボタンと⌘Q終了を除き、意図的な終了はメニューから確認。
 - モニター以外のツールは独立window。カード型の共通UI、公式祝日データ同梱、音声は明示開始・録音メモリ内、CSVは明示保存。[初期5本](docs/LOCAL_TOOLS.md)、[テキスト3本](docs/TEXT_TOOLS.md)、[行・置換・リスト5機能](docs/LINE_TOOLS.md)。
@@ -27,12 +28,11 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 - /Applicationsへ配置、ログイン起動の有効状態確認。定期ログ（10秒・7日、ローカルJSONL、設定変更可）。
 - 専用アプリアイコン（工具箱＋モニター波形、16〜1024px ICNS）。
 - Xcodeプロジェクト、ローカル.app、Swift Packageの共通ライブラリ・CLI PoC・単体テスト、標準verifyのアプリ検証。
-
 - カラーパレット：参照Web版の120色、HEX/RGBコピー、2色・4方向のCSSグラデーション、8おすすめ、ローカル自動保存メモ。
 
 - [User-Agent Viewer](docs/USER_AGENT.md)：内蔵WebKitの端末情報・UA／全情報コピー・外部UA貼り付け解析。
 
-- [画像リサイズ](docs/IMAGE_RESIZER.md)：ピクセル／倍率指定・縦横比維持・プレビュー・JPEG/PNG別名保存。
+- [画像リサイズ](docs/IMAGE_RESIZER.md)：複数選択／複数drop・ピクセル／倍率指定・縦横比維持・プレビュー・JPEG/PNG一括保存。
 
 - [容量・進数・帯域・RAID・SLAの5計算ツール](docs/TECHNICAL_CALCULATORS.md)を追加。ローカル計算、入力検証、結果コピー、3テーマ対応。/Applications版へ配置し、5本の代表入力・コピー・不正入力を実機確認。
 

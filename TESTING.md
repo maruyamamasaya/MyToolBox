@@ -178,7 +178,7 @@ User-Agent Viewer：UserAgentInfoTestsでブラウザ識別優先順、iOS/Andro
 
 ## 画像リサイズ
 
-ImageResizerTestsでPNG寸法/透明・JPEG白背景/形式・EXIF向き補正・寸法/画素/入力上限・倍率丸め・複数ページ拒否・実ファイル保存再読込・元画像/シンボリックリンク/ハードリンク保護を検証する。`tools/RenderImageResizer.swift`はRenderLocalToolsのcompileコマンドの末尾ソースと出力名を置き換えてcompileし、`build/render-image-resizer`で実行。合成画像によるモデル読込・縦横比・変換・JPEG保存再読込・元画像不変・古い結果破棄と3テーマ描画を確認する。手動では一覧から起動、ファイル選択/ドロップ、幅/高さの双方向編集、倍率/品質/形式、保存キャンセル/別名保存を確認する。
+ImageResizerTestsで一括の縦横比／固定寸法／倍率・別フォルダ同名画像・不正画像の失敗分離・既存出力の上書き拒否と、PNG寸法/透明・JPEG白背景/形式・EXIF向き補正・寸法/画素/入力上限・倍率丸め・複数ページ拒否・実ファイル保存再読込・元画像/シンボリックリンク/ハードリンク保護を検証する。`tools/RenderImageResizer.swift`はRenderLocalToolsのcompileコマンドの末尾ソースと出力名を置き換えてcompileし、`build/render-image-resizer`で実行。合成画像によるモデル読込・縦横比・変換・JPEG保存再読込・元画像不変・古い結果破棄と3テーマ描画を確認する。手動では一覧から起動、ファイル選択/ドロップ、幅/高さの双方向編集、倍率/品質/形式、保存キャンセル/別名保存を確認する。
 
 計算5ツールはTechnicalCalculatorsTestsで単位・多桁進数・帯域逆算・RAID制約・SLA境界を検証。RenderLocalToolsに`--calculators-only`を付けて5画面を描画。計算5ツールの実機代表入力・コピー・不正入力を確認済み（[記録](sessions/2026-10-15-32-calculators-installed.md)）。
 
@@ -219,3 +219,5 @@ SQLツール：SQLToolsTestsで引用保持・整形の実行結果一致・SELE
 表ビルダー：`testSavedTableCSVReopensExactly`で実ファイルのUTF-8／BOM付きCSVの往復、日本語・引用符・セル内改行・末尾空欄、サイズ／行数／構文エラーを検証。保存3形式、windowを閉じた後のCSV再読込、保存キャンセルの保持は[実機記録](sessions/2026-10-15-50-table-file-roundtrip.md)。
 
 残る実機確認：[メモJSON往復・表の実表示／編集／コピー・SQL復帰・ログ／classic close修正](sessions/2026-10-15-52-remaining-live-fixes.md)。ThemeSwitchProbeは終了拒否とclose／cleanup各1回も確認。IME未確定・全組合せ・実sleep等は未確認として区別する。
+
+マイカレンダー：`PersonalCountdownTests.swift`で暦日差・時間目標・保存／破損を確認。`tools/VerifyPersonalCalendar.swift`で隔離モデルの追加・編集・復元・削除と3テーマ描画。実機では日付選択→目標追加→編集→閉じて再表示→削除確認→キャンセルを確認する。[仕様](docs/PERSONAL_CALENDAR.md)。

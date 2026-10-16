@@ -166,7 +166,7 @@ struct ToolLauncher: View {
         case .localMemo: return .yellow
         case .systemMonitor: return .green
         case .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .orange
-        case .businessDays: return Color(red: 0.02, green: 0.65, blue: 0.47)
+        case .personalCalendar, .businessDays: return Color(red: 0.02, green: 0.65, blue: 0.47)
         case .audioCheck: return Color(red: 0.0, green: 0.62, blue: 0.87)
         case .microphoneCheck: return .purple
         case .csvViewer: return .blue

@@ -37,6 +37,40 @@ public enum ImageResizer {
         let size = Size(width: max(1, Int((Double(width) * scale).rounded())), height: max(1, Int((Double(height) * scale).rounded())))
         try validate(size); return size
     }
+    public enum BatchSizing: Sendable {
+        case scale(Double)
+        case pixels(Size, keepRatio: Bool, widthBased: Bool)
+        public func size(width: Int, height: Int) throws -> Size {
+            switch self {
+            case .scale(let scale): return try ImageResizer.scaled(width: width, height: height, scale: scale)
+            case .pixels(let requested, let keepRatio, let widthBased):
+                try ImageResizer.validate(requested)
+                if !keepRatio { return requested }
+                return try ImageResizer.scaled(width: width, height: height, scale: widthBased ? Double(requested.width) / Double(width) : Double(requested.height) / Double(height))
+            }
+        }
+    }
+    /// Every batch gets a new directory; existing files and all input files remain untouched.
+    public static func createBatchDirectory(in parent: URL) throws -> URL {
+        let folder = parent.appendingPathComponent("リサイズ-" + UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        return folder
+    }
+    public static func resizeBatchFile(_ source: URL, index: Int, directory: URL, sizing: BatchSizing, format: Format, quality: Double) throws -> URL {
+        try Task.checkCancellation()
+        return try autoreleasepool {
+            let input = try read(source)
+            let size = try sizing.size(width: input.width, height: input.height)
+            let data = try resize(input, to: size, format: format, quality: quality)
+            try Task.checkCancellation()
+            let stem = String(source.deletingPathExtension().lastPathComponent.prefix(40))
+            let name = String(format: "%03d-", index + 1) + stem + "-\(size.width)x\(size.height)." + format.fileExtension
+            let destination = directory.appendingPathComponent(name)
+            guard destination.resolvingSymlinksInPath().standardizedFileURL != source.resolvingSymlinksInPath().standardizedFileURL else { throw Failure.message("元画像には上書きできません") }
+            try data.write(to: destination, options: .withoutOverwriting)
+            return destination
+        }
+    }
     public static func inspect(_ data: Data) throws -> Input {
         guard !data.isEmpty, data.count <= maxBytes else { throw Failure.message("30MiB以下の画像を選択してください") }
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
