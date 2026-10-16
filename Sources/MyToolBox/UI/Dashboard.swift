@@ -5,7 +5,7 @@ struct Dashboard: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var store: MonitorStore
     var openTools: (() -> Void)? = nil
-    private let titles = ["cpu": "CPU", "gpu": "GPU", "memory": "Memory", "network": "Network", "storage": "Storage", "battery": "Battery", "sensors": "Sensors"]
+    private let titles = ["cpu": "CPU", "gpu": "GPU", "memory": "Memory", "network": "Network", "storage": "Storage", "battery": "Battery", "sensors": "Sensors", "security": "セキュリティ"]
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -21,6 +21,7 @@ struct Dashboard: View {
             Divider()
             if store.selected == "settings" { SettingsPanel(store: store) }
             else if store.selected == "overview" { overview }
+            else if store.selected == "security" { SecurityDetail(store: store) }
             else { detail.id(store.selected) }
             Divider()
             HStack {
@@ -107,6 +108,10 @@ struct Dashboard: View {
                         caption(batteryState)
                     }
                     meter("battery", "残量")
+                }
+                card("security", "shield.lefthalf.filled") {
+                    caption("ファイアウォール・FileVault・Gatekeeper")
+                    caption(store.securityChecking ? "確認中…" : "各設定の状態を表示")
                 }
                 card("sensors", "fan") {
                     HStack {

@@ -4,6 +4,7 @@ import SwiftUI
     private var windows: [ToolID: ToolWindow] = [:]
     private var sleepObserver: NSObjectProtocol?
     init() {
+        _ = WindowManagerModel.shared
         sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.stopAudio() }
         }
@@ -12,6 +13,11 @@ import SwiftUI
         if let existing = windows[tool] { existing.window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return }
         let controller: ToolWindow
         switch tool {
+        case .gitBatch:
+            let model = GitBatchModel()
+            controller = ToolWindow(title: tool.title, view: GitBatchView(model: model))
+            controller.canClose = { !model.busy }
+        case .windowManager: controller = ToolWindow(title: tool.title, view: WindowManagerView())
         case .personalCalendar: controller = ToolWindow(title: tool.title, view: PersonalCalendarView())
         case .sqlWorkspace:
             let model = SQLWorkspaceModel()

@@ -79,3 +79,9 @@ SQL：`SQLText.swift`（字句・整形・説明）／`SQLPlayground.swift`（SQ
 追加ツール回帰：`Tests/MonitorKitTests/AddedToolsTests.swift`／`ServerAndEverydayTests.swift`。メモ・生成・検索、サーバー／日常計算を検証。`tools/VerifyAddedTools.swift`で隔離モデル・3テーマ描画。[結果](sessions/2026-10-15-49-batch-tool-validation.md)。
 
 マイカレンダー：`PersonalCountdown.swift`（日数・時間目標・保存）→ `PersonalCalendarView.swift` → ToolCatalog／ToolWindows。`PersonalCountdownTests.swift`、`tools/VerifyPersonalCalendar.swift`。[仕様](docs/PERSONAL_CALENDAR.md)。
+
+セキュリティ：`Monitoring/Security.swift`（専用actor・Process・状態解析）→ `MonitorStore.refreshSecurity` → `UI/SecurityDetail.swift`／Dashboard。`SecurityTests.swift`。[取得仕様](docs/SECURITY.md)。
+
+ウィンドウ配置：`WindowLayout.swift`（座標・16配置）→ `WindowManagerView.swift`（AX・復元・Carbonホットキー）→ ToolCatalog／ToolWindows。`WindowLayoutTests.swift`。[仕様](docs/WINDOW_MANAGER.md)。
+
+Git一括管理：`Tools/GitBatch.swift`（GitBatchWorker／引数配列でGit実行）→ `GitBatchView.swift` → ToolCatalog／ToolWindows。`GitBatchTests.swift`。[仕様](docs/GIT_BATCH.md)。

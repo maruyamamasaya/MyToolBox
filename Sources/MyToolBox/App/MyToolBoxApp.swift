@@ -94,7 +94,9 @@ import ServiceManagement
         if popover.isShown && !showingTools { popover.performClose(nil) } else { showMonitor() }
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showTools(); return false
+        // Activation/reopen must not replace a popover the user is operating.
+        if !popover.isShown { showTools() }
+        return false
     }
     func requestTermination() {
         NSApp.activate(ignoringOtherApps: true)

@@ -13,7 +13,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 
 /// Installed tools only; each route has a native implementation.
 enum ToolID: String, CaseIterable, Identifiable {
-    case personalCalendar
+    case gitBatch, personalCalendar, windowManager
     case sqlWorkspace
     case regexTester, regexBuilder, tableBuilder, csvStatistics
     case jsonWorkspace, logHighlighter, hashGenerator, testDataGenerator
@@ -22,6 +22,8 @@ enum ToolID: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .gitBatch: return "Git一括管理"
+        case .windowManager: return "ウィンドウマネージャー"
         case .personalCalendar: return "マイカレンダー"
         case .sqlWorkspace: return "SQLツール"
         case .regexTester: return "正規表現テスター"
@@ -76,6 +78,8 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var subtitle: String {
         switch self {
+        case .gitBatch: return "リポジトリの状態確認・取得・コミット・送信"
+        case .windowManager: return "ウィンドウの分割配置・中央・最大化・復元"
         case .personalCalendar: return "月表示・複数の目標日・残り日数・カウントダウン"
         case .sqlWorkspace: return "SQL整形・SELECTの説明・SQLiteで試す"
         case .regexTester: return "一致ハイライト・キャプチャ・置換プレビュー"
@@ -130,6 +134,8 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var symbol: String {
         switch self {
+        case .gitBatch: return "arrow.triangle.branch"
+        case .windowManager: return "rectangle.split.2x2"
         case .personalCalendar: return "calendar.badge.clock"
         case .sqlWorkspace: return "cylinder.split.1x2"
         case .regexTester: return "text.magnifyingglass"
@@ -187,14 +193,14 @@ enum ToolID: String, CaseIterable, Identifiable {
 extension ToolID {
     var category: ToolCategory {
         switch self {
-        case .sqlWorkspace: return .server
+        case .gitBatch, .sqlWorkspace: return .server
         case .regexTester, .regexBuilder, .tableBuilder, .csvStatistics: return .text
         case .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator: return .calculation
         case .logHighlighter, .cidrAnalyzer, .dnsRecordBuilder, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter: return .server
         case .jsonWorkspace, .hashGenerator, .testDataGenerator, .localMemo, .csvViewer, .csvEditor, .sequentialText, .clipboardFormatter, .textCleaner, .lineTools, .stringReplacer, .comparison, .textCodec: return .text
         case .randomNumberGenerator, .byteConverter, .numberBaseConverter, .bandwidthCalculator, .raidCalculator, .slaCalculator: return .calculation
         case .colorPalette, .imageResizer: return .design
-        case .portNumberFinder, .httpStatusViewer, .systemMonitor, .audioCheck, .microphoneCheck, .userAgent: return .system
+        case .windowManager, .portNumberFinder, .httpStatusViewer, .systemMonitor, .audioCheck, .microphoneCheck, .userAgent: return .system
         case .personalCalendar, .businessDays, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .calendar
         }
     }

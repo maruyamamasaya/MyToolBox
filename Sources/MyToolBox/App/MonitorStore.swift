@@ -16,6 +16,9 @@ import ServiceManagement
     @Published var logError: String?
     @Published var lastLogDate: Date?
     private let logger = MonitoringLog()
+    @Published var securityReadings = SecurityItem.allCases.map { SecurityReading(item: $0) }
+    @Published private(set) var securityChecking = false
+    private let securityCollector = SecurityCollector()
     private let engine = MonitorEngine()
     private var loop: Task<Void, Never>?
     private var observers: [NSObjectProtocol] = []
@@ -29,7 +32,21 @@ import ServiceManagement
         observers.append(nc.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.resume() }
         })
-        refreshLoginStatus(); start()
+        refreshLoginStatus(); start(); refreshSecurity()
+    }
+    func refreshSecurityIfNeeded() {
+        if securityReadings.allSatisfy({ $0.checkedAt == nil }) { refreshSecurity() }
+    }
+    func refreshSecurity() {
+        guard !securityChecking else { return }
+        securityChecking = true
+        securityReadings = securityReadings.map { SecurityReading(item: $0.item, checkedAt: $0.checkedAt) }
+        Task { [weak self, securityCollector] in
+            let readings = await securityCollector.read()
+            guard let self else { return }
+            securityReadings = readings
+            securityChecking = false
+        }
     }
     func start() {
         guard loop == nil else { return }

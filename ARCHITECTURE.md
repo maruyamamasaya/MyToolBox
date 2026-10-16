@@ -41,7 +41,7 @@ MainActorの1つのTaskがactor取得完了を待ち、snapshot・時刻付き60
 値はavailable / waiting / unavailable / notPresentで表現し、欠損はnilと理由を持つ。失敗を0で埋めず他カテゴリを継続。UserDefaultsへ表示・ログ設定を保存する。任意の定期ログはMonitoringLog actorが主要指標を日別JSONLへ保存・期限整理する。差分・保持期間は単調時刻、ラベルは実時刻。詳細は[測定定義](docs/TECHNICAL_VALIDATION.md)。
 
 ## API Structure / Database / Authentication / External Services
-ローカルOS APIのみ。特権ヘルパー、sudo、SMC書込、ネットワーク送信なし。App Sandboxは使わず、通常ユーザーの読取権限で実行。非公開キーの欠損・OS制限は値の取得不可として扱う。APIハングの強制timeoutは未実装。
+監視はローカルOS APIのみ。特権ヘルパー、sudo、SMC書込なし。Git一括管理は明示操作時にリモート通信する。App Sandboxは使わず、通常ユーザーの読取権限で実行。非公開キーの欠損・OS制限は値の取得不可として扱う。APIハングの強制timeoutは未実装。
 
 ## Deployment
 [MyToolBox.xcodeproj](MyToolBox.xcodeproj)は実在するnative app target。共有Swiftファイルを直接コンパイルする。Swift Packageはライブラリ・CLI・単体テスト用で、Xcodeの外部package解決を不要にした。ad hoc署名のローカル.app、CI/CD・公証なし。
@@ -64,3 +64,9 @@ User-Agent Viewerは非永続WKWebViewへ同梱HTML文字列だけを読み込�
 SQLツールは字句ベースの整形・基本SELECT説明と、SQLPlaygroundWorker actorが所有するメモリ内SQLiteを共有入力の3タブに統合。SQLの外部DB・ファイル操作はauthorizerで拒否し、時間・出力・DB容量を制限する。詳細は[仕様](docs/SQL_TOOLS.md)。
 
 マイカレンダーは既存の予定調整から独立。PersonalCountdownが日付／時間目標と日本時間の日数計算、PersonalCountdownStoreがUserDefaults保存、PersonalCalendarModelが編集確定と読込エラー保護を担当。月表示はToolCalendarと同梱祝日を再利用。[仕様](docs/PERSONAL_CALENDAR.md)。
+
+セキュリティ状態は通常の秒周期sampleから独立したSecurityCollector actorで起動／手動時のみ取得。MonitorStoreが実行中を管理し重複を防止、SecurityDetailが表示。3つの固定読取コマンドは各5秒でtimeout。詳細は[取得仕様](docs/SECURITY.md)。
+
+ウィンドウマネージャーはWindowLayoutの純粋座標計算と、WindowManagerModelのAccessibility操作／Carbonホットキーを分離。ToolWindows初期化時から外部アプリの選択を追跡し、復元位置はメモリのみ。明示操作時にだけ外部ウィンドウを変更。[仕様](docs/WINDOW_MANAGER.md)。
+
+Git一括管理はGitBatchWorker actorが通常ユーザーのGitを引数配列で直列実行する。明示操作でoriginへfetch／pushを行う。画面はローカル読込と通信を区別し、更新／コミット送信は確認付き。[仕様](docs/GIT_BATCH.md)。

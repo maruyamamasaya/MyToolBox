@@ -7,9 +7,10 @@ struct ToolPage<Content: View>: View {
     let subtitle: String
     let symbol: String
     let tint: Color
+    let usesNetwork: Bool
     var content: Content
-    init(_ title: String, subtitle: String, symbol: String, tint: Color, @ViewBuilder content: () -> Content) {
-        self.title = title; self.subtitle = subtitle; self.symbol = symbol; self.tint = tint; self.content = content()
+    init(_ title: String, subtitle: String, symbol: String, tint: Color, usesNetwork: Bool = false, @ViewBuilder content: () -> Content) {
+        self.title = title; self.subtitle = subtitle; self.symbol = symbol; self.tint = tint; self.usesNetwork = usesNetwork; self.content = content()
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -27,7 +28,7 @@ struct ToolPage<Content: View>: View {
                 }
                 Spacer()
                 ThemeMenu()
-                Label("LOCAL", systemImage: "lock.shield").font(theme.font( 10, weight: .semibold)).tracking(1)
+                Label(usesNetwork ? "NETWORK" : "LOCAL", systemImage: usesNetwork ? "network" : "lock.shield").font(theme.font( 10, weight: .semibold)).tracking(1)
                     .foregroundStyle(.secondary).padding(.horizontal, 10).padding(.vertical, 7)
                     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 50))
             }.padding(.horizontal, 26).padding(.vertical, theme.classic ? 8 : 22).fixedSize(horizontal: false, vertical: true)

@@ -221,3 +221,9 @@ SQLツール：SQLToolsTestsで引用保持・整形の実行結果一致・SELE
 残る実機確認：[メモJSON往復・表の実表示／編集／コピー・SQL復帰・ログ／classic close修正](sessions/2026-10-15-52-remaining-live-fixes.md)。ThemeSwitchProbeは終了拒否とclose／cleanup各1回も確認。IME未確定・全組合せ・実sleep等は未確認として区別する。
 
 マイカレンダー：`PersonalCountdownTests.swift`で暦日差・時間目標・保存／破損を確認。`tools/VerifyPersonalCalendar.swift`で隔離モデルの追加・編集・復元・削除と3テーマ描画。実機では日付選択→目標追加→編集→閉じて再表示→削除確認→キャンセルを確認する。[仕様](docs/PERSONAL_CALENDAR.md)。
+
+セキュリティ：SecurityTestsで既知／未知応答、権限・終了コード・stderr・移行状態、子プロセスtimeout／起動失敗を確認。手動ではモニター→セキュリティ→再確認の確認中／連打防止／日時更新を確認。設定変更による試験は行わない。[仕様と制約](docs/SECURITY.md)。
+
+ウィンドウ配置：`WindowLayoutTests`で端数・負座標・座標反転・中央配置を検証。手動で権限なし案内→ユーザーによる許可→半分／三分割／四分割／復元、複数画面、固定サイズ拒否、ショートカットON/OFF・再起動保持を確認。[仕様](docs/WINDOW_MANAGER.md)。
+
+Git一括管理：`GitBatchTests`でローカルbare origin／2cloneの同期・停止条件と引数の安全性を検証。実リモートへは送信しない。UIは選択・確認キャンセル・処理中閉鎖抑止・3テーマを別途確認。[仕様](docs/GIT_BATCH.md)。

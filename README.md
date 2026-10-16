@@ -19,6 +19,8 @@ open build/Build/Products/Release/MyToolBox.app
 
 [比較ツール](docs/COMPARISON_TOOLS.md)も追加しました。テキスト差分とリスト比較を1つの青いアイコンから利用できます。MyToolBox本体もローカルGit管理を開始しています（リモート未設定）。
 
+セキュリティ設定（ファイアウォール・FileVault・Gatekeeper）の読取確認をモニターに追加。[取得方法と制約](docs/SECURITY.md)。
+
 ## 案内
 
 - [現在地](CURRENT.md)

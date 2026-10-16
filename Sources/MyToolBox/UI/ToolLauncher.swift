@@ -153,6 +153,7 @@ struct ToolLauncher: View {
 
     private func color(_ tool: ToolID) -> Color {
         switch tool {
+        case .gitBatch: return .orange
         case .sqlWorkspace: return .indigo
         case .regexTester, .regexBuilder: return .indigo
         case .tableBuilder, .csvStatistics: return .teal
@@ -164,6 +165,7 @@ struct ToolLauncher: View {
         case .hashGenerator: return .purple
         case .testDataGenerator: return .indigo
         case .localMemo: return .yellow
+        case .windowManager: return .cyan
         case .systemMonitor: return .green
         case .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .orange
         case .personalCalendar, .businessDays: return Color(red: 0.02, green: 0.65, blue: 0.47)
