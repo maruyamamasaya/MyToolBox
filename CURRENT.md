@@ -9,7 +9,7 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 
 ## 実装済み
 - [Git一括管理](docs/GIT_BATCH.md)：フォルダ直下の状態確認・ff更新・確認付きコミット／送信。既存スクリプトは保持。単体152件・Full・3テーマ描画成功。/Applications反映・再起動・一覧52件を実画面で確認。個別画面の操作は未確認。
-- [ウィンドウマネージャー](docs/WINDOW_MANAGER.md)：16配置・復元・固定グローバルショートカットを追加。単体150件／Full・署名・3テーマ描画確認。/Applications反映・画面起動確認済み。実画面で許可済み・配置ボタン成功表示を確認。ショートカットOFFを確認しONへ変更、実キーの動作は未確認。[調査](sessions/2026-10-16-08-window-shortcuts.md)。
+- [ウィンドウマネージャー](docs/WINDOW_MANAGER.md)：16配置・復元・ショートカット。許可反復へ証明書署名固定・保守処理の設定変更を修正し配置済み。単体152件／Full成功。初回署名切替の再許可・維持確認待ち。[記録](sessions/2026-10-16-10-stable-signing.md)。
 - [セキュリティ状態](docs/SECURITY.md)：モニター内でFirewall／FileVault／Gatekeeperを起動時・手動確認。通常権限・各5秒timeout、失敗理由・日時・確認中・移行中を表示。/Applicationsへ配置、実機でFileVault有効と再確認2回を確認。
 - [マイカレンダー](docs/PERSONAL_CALENDAR.md)：独立した月表示と、自分で複数設定できる日付／時間目標の残り日数。ローカル保存・編集・削除。既存の予定調整は「日程調整・営業日」へ表示名変更。
 - [共通3テーマ](docs/THEMES.md)：Blue Cosmos／Living Aurora／Windows 98。設定・一覧・各ツールから切替、開いている全画面へ反映・永続化。

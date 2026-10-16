@@ -31,3 +31,5 @@ Status / Date
 - [0008：比較ツールとローカルGit管理](0008-comparison-and-local-git.md)
 
 - [0009：日程候補と営業日計算のカレンダー統合](0009-calendar-workspace.md)
+
+- [0010：更新時の署名固定](0010-stable-local-signing.md)

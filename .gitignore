@@ -16,3 +16,6 @@ DerivedData/
 *.key
 *.p12
 *.pfx
+
+# Machine-specific certificate selection; no private keys.
+.local-signing.xcconfig

@@ -5,8 +5,20 @@ import tempfile
 import unittest
 import shutil
 from verify import check, ROOT
+from app_verify import validate_signing_transition
 
 class VerifyTests(unittest.TestCase):
+    def testSigningDowngradeIsRejected(self):
+        stable = '# designated => identifier "local.MyToolBox" and anchor apple generic'
+        adhoc = '# designated => cdhash H"1234"'
+        with self.assertRaisesRegex(RuntimeError, 'ad hoc fallback refused'):
+            validate_signing_transition(stable, adhoc)
+        with self.assertRaisesRegex(RuntimeError, 'ad hoc fallback refused'):
+            validate_signing_transition(stable, adhoc.removeprefix('# '))
+        validate_signing_transition(adhoc, stable)
+        validate_signing_transition(stable, stable)
+        validate_signing_transition(adhoc, adhoc)
+
     def fixture(self, destination):
         for path in ROOT.rglob('*.md'):
             relative = path.relative_to(ROOT)

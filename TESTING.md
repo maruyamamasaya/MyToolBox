@@ -143,7 +143,7 @@ build/regex-budget-probe
 
 ComparisonTestsの7件は空行・末尾改行・行番号・語単位/Unicode差分、ランダムな行列の再構築、1,000行境界・容量超過、集合の順序/重複/大文字小文字/空白を検証する。Fullに含む。合成描画2画面と実機操作の結果は[比較ツール](docs/COMPARISON_TOOLS.md)。
 
-Python検証器テストは5件。Fastは未生成の宣言済みRelease.appリンクだけ許容する。他の欠落リンクは失敗し、build内の参照clone文書は走査しない。Fullは必ず実ビルドと.app・署名を確認する。生成物をGitへ入れず初回checkoutから検証できるための例外であり、アプリ検証の省略ではない。
+Python検証器テストは6件（証明書署名からad hocへの逆戻り拒否を含む）。Fastは未生成の宣言済みRelease.appリンクだけ許容する。他の欠落リンクは失敗し、build内の参照clone文書は走査しない。Fullは必ず実ビルドと.app・署名を確認する。生成物をGitへ入れず初回checkoutから検証できるための例外であり、アプリ検証の省略ではない。
 
 
 ## 共通テーマ

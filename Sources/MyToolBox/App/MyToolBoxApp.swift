@@ -17,7 +17,7 @@ import ServiceManagement
     private var status: NSStatusItem!
     private var toolboxStatus: NSStatusItem!
     private var showingTools = false
-    private let toolWindows = ToolWindows()
+    private lazy var toolWindows = ToolWindows()
     private var popover: NSPopover!
     private var store: MonitorStore!
     private var strip: StatusStrip!
@@ -38,6 +38,8 @@ import ServiceManagement
             } catch { fputs("Login registration failed: \(error)\n", stderr); exit(1) }
             exit(0)
         }
+        // Maintenance commands must not register hotkeys or change their saved setting.
+        _ = toolWindows
         store = MonitorStore()
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         strip = StatusStrip(frame: .zero)

@@ -31,20 +31,22 @@ def main():
     files.append(holiday_ref)
     product = obj('product', 'isa = PBXFileReference; explicitFileType = wrapper.application; path = MyToolBox.app; sourceTree = BUILT_PRODUCTS_DIR;')
     products = obj('products', f'isa = PBXGroup; name = Products; children = ({product},); sourceTree = "<group>";')
+    signing_ref = obj('signingConfig', 'isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Resources/Signing.xcconfig; sourceTree = SOURCE_ROOT;')
+    files.append(signing_ref)
     group = obj('group', f'isa = PBXGroup; children = ({",".join(files + [manifest, products])},); sourceTree = "<group>";')
     sources = obj('sources', f'isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({",".join(builds)},); runOnlyForDeploymentPostprocessing = 0;')
     resources = obj('resources', f'isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ({manifest_build},{license_build},{icon_build},{holiday_build},); runOnlyForDeploymentPostprocessing = 0;')
     configs = []
     for name in ['Debug', 'Release']:
         opt = '-Onone' if name == 'Debug' else '-O'
-        configs.append(obj(name, f'''isa = XCBuildConfiguration; name = {name}; buildSettings = {{
+        configs.append(obj(name, f'''isa = XCBuildConfiguration; name = {name}; baseConfigurationReference = {signing_ref}; buildSettings = {{
             PRODUCT_NAME = MyToolBox; PRODUCT_BUNDLE_IDENTIFIER = local.MyToolBox;
             MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; ARCHS = arm64;
             ALWAYS_SEARCH_USER_PATHS = NO; SWIFT_VERSION = 5.0; SWIFT_OPTIMIZATION_LEVEL = "{opt}";
             GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Resources/Info.plist; INFOPLIST_KEY_LSUIElement = YES;
             INFOPLIST_KEY_CFBundleDisplayName = MyToolBox;
             CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0;
-            CODE_SIGN_ENTITLEMENTS = Resources/MyToolBox.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual;
+            CODE_SIGN_ENTITLEMENTS = Resources/MyToolBox.entitlements; CODE_SIGN_IDENTITY = "$(MYTOOLBOX_SIGNING_IDENTITY)"; CODE_SIGN_STYLE = Manual;
             ENABLE_APP_SANDBOX = NO; ENABLE_HARDENED_RUNTIME = YES;
             OTHER_LDFLAGS = "$(inherited) -lsqlite3";
             LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";

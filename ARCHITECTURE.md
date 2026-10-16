@@ -44,7 +44,7 @@ MainActorの1つのTaskがactor取得完了を待ち、snapshot・時刻付き60
 監視はローカルOS APIのみ。特権ヘルパー、sudo、SMC書込なし。Git一括管理は明示操作時にリモート通信する。App Sandboxは使わず、通常ユーザーの読取権限で実行。非公開キーの欠損・OS制限は値の取得不可として扱う。APIハングの強制timeoutは未実装。
 
 ## Deployment
-[MyToolBox.xcodeproj](MyToolBox.xcodeproj)は実在するnative app target。共有Swiftファイルを直接コンパイルする。Swift Packageはライブラリ・CLI・単体テスト用で、Xcodeの外部package解決を不要にした。ad hoc署名のローカル.app、CI/CD・公証なし。
+[MyToolBox.xcodeproj](MyToolBox.xcodeproj)は実在するnative app target。共有Swiftファイルを直接コンパイルする。Swift Packageはライブラリ・CLI・単体テスト用で、Xcodeの外部package解決を不要にした。ローカル.appは証明書選択用xcconfigで署名を固定可能（fresh checkoutの既定はad hoc）。このMacの通常更新は既存Apple Development証明書を使用。CI/CD・公証なし。[署名運用](docs/CODE_SIGNING.md)。
 
 採用理由は[0002](decisions/0002-poc-and-native-mvp.md)。
 

@@ -85,3 +85,5 @@ SQL：`SQLText.swift`（字句・整形・説明）／`SQLPlayground.swift`（SQ
 ウィンドウ配置：`WindowLayout.swift`（座標・16配置）→ `WindowManagerView.swift`（AX・復元・Carbonホットキー）→ ToolCatalog／ToolWindows。`WindowLayoutTests.swift`。[仕様](docs/WINDOW_MANAGER.md)。
 
 Git一括管理：`Tools/GitBatch.swift`（GitBatchWorker／引数配列でGit実行）→ `GitBatchView.swift` → ToolCatalog／ToolWindows。`GitBatchTests.swift`。[仕様](docs/GIT_BATCH.md)。
+
+署名：`Resources/Signing.xcconfig`＋Git除外の`.local-signing.xcconfig` → generate_project.pyのDebug／Release → app_verify.pyのad hoc逆戻り拒否。test_verify.py。[運用](docs/CODE_SIGNING.md)。

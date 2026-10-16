@@ -13,7 +13,7 @@ open build/Build/Products/Release/MyToolBox.app
 
 Xcodeで `MyToolBox.xcodeproj` を開きMyToolBoxスキームを実行してもよい。新しいSwiftファイルを加えたら `python3 scripts/generate_project.py` でプロジェクトを更新する（設定の正本もこの生成スクリプト）。ビルド出力は `build/`、SwiftPMは `.build/`。
 
-.appはad hoc署名のローカル実行用。管理者権限・インストーラ不要。更新時は起動中のMyToolBoxをアプリメニューの「MyToolBoxを終了…」から確認して終了してから再ビルド・起動する。起動中のプロセスはビルド後も旧バイナリで動く場合がある。
+.appはローカル実行用。通常利用の更新は同じApple Development証明書で署名する。fresh checkoutの既定はad hoc。選択・権限維持・検証は[署名運用](docs/CODE_SIGNING.md)。管理者権限・インストーラ不要。更新時は起動中のMyToolBoxをアプリメニューの「MyToolBoxを終了…」から確認して終了してから再ビルド・起動する。起動中のプロセスはビルド後も旧バイナリで動く場合がある。
 
 ## 操作
 
@@ -89,7 +89,7 @@ Xcodeで `MyToolBox.xcodeproj` を開きMyToolBoxスキームを実行しても�
 
 ## 最新版だけを保持する運用
 
-ユーザー指定により、MyToolBox更新後は最新版だけを保持する。通常利用先は `/Applications/MyToolBox.app`、ビルド出力は `build/Build/Products/Release/MyToolBox.app` の固定パスを使う。同じ最新版のビルド出力は検証・再インストール用に保持する。日時付きの.appコピーを恒久保存しない。更新作業中の一時バックアップは、ビルド・署名検証と配置の成功を確認した後に削除する。失敗時は復旧用コピーを残し、成功するまで削除しない。整理対象は確認済みのMyToolBox旧版.appのみとし、設定・ログ・編集中のファイルは対象にしない。
+ユーザー指定により、MyToolBox更新後は最新版だけを保持する。通常利用先は `/Applications/MyToolBox.app`、ビルド出力は `build/Build/Products/Release/MyToolBox.app` の固定パスを使う。ビルド出力は検証・配置中だけ保持し、配置先との内容一致を確認した後に削除する（2026-10-16のユーザー指定）。Fullはビルド出力を再生成するため、配置完了時に再び整理する。通常利用・権限登録では /Applications の1本だけを選ぶ。日時付きの.appコピーを恒久保存しない。更新作業中の一時バックアップは、ビルド・署名検証と配置の成功を確認した後に削除する。失敗時は復旧用コピーを残し、成功するまで削除しない。整理対象は確認済みのMyToolBox旧版.appのみとし、設定・ログ・編集中のファイルは対象にしない。
 
 
 ## カレンダー

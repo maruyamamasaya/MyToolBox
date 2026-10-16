@@ -1,0 +1,4 @@
+// Fresh checkouts can build locally. Installed copies needing persistent privacy
+// permissions must use a stable certificate via the ignored local configuration.
+MYTOOLBOX_SIGNING_IDENTITY = -
+#include? "../.local-signing.xcconfig"
