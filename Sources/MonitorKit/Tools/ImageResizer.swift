@@ -4,7 +4,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 public enum ImageResizer {
-    public static let maxBytes = 30 * 1024 * 1024
+    public static let maxBytes = 50 * 1024 * 1024
     public static let maxPixels = 40_000_000
     public enum Format: String, CaseIterable, Sendable {
         case png = "PNG", jpeg = "JPEG"
@@ -72,7 +72,7 @@ public enum ImageResizer {
         }
     }
     public static func inspect(_ data: Data) throws -> Input {
-        guard !data.isEmpty, data.count <= maxBytes else { throw Failure.message("30MiB以下の画像を選択してください") }
+        guard !data.isEmpty, data.count <= maxBytes else { throw Failure.message("50MiB以下の画像を選択してください") }
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               let type = CGImageSourceGetType(source) as String?,
               [UTType.jpeg.identifier, UTType.png.identifier, UTType.webP.identifier, UTType.heic.identifier, UTType.heif.identifier, UTType.tiff.identifier].contains(type),
@@ -87,7 +87,7 @@ public enum ImageResizer {
     }
     public static func read(_ url: URL) throws -> Input {
         let attributes = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
-        guard attributes.isRegularFile == true, let bytes = attributes.fileSize, bytes <= maxBytes else { throw Failure.message("30MiB以下の画像ファイルを選択してください") }
+        guard attributes.isRegularFile == true, let bytes = attributes.fileSize, bytes <= maxBytes else { throw Failure.message("50MiB以下の画像ファイルを選択してください") }
         return try inspect(Data(contentsOf: url))
     }
     public static func preview(_ data: Data, maxDimension: Int = 1000) throws -> CGImage {

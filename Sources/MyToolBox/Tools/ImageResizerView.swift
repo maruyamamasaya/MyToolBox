@@ -169,7 +169,7 @@ struct ImageResizerView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(model.isBatch ? "\(model.batchURLs.count)枚を選択中" : model.sourceURL?.lastPathComponent ?? "ここに画像をドロップ").font(.headline).lineLimit(2)
                                 if let input = model.input { Text("\(input.width) × \(input.height) px · \(ImageResizerModel.bytes(input.data.count))").foregroundStyle(.secondary) }
-                                else { Text("JPEG・PNG・WebP・HEIC・TIFF ／ 1枚30MiB・200枚まで").font(.caption).foregroundStyle(.secondary) }
+                                else { Text("JPEG・PNG・WebP・HEIC・TIFF ／ 1枚50MiB・200枚まで").font(.caption).foregroundStyle(.secondary) }
                             }
                             Spacer()
                             Button("画像を選択…") { model.open() }.controlSize(.large)
