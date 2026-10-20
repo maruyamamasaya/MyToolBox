@@ -14,6 +14,7 @@ import ApplicationServices
     private let defaults: UserDefaults
     private let registration: WindowManagerShortcutRegistration
     private let trustReader: () -> Bool
+    private let trustRequester: () -> Bool
     private let trackApplications: Bool
     private let applyOverride: ((WindowLayout) -> Void)?
     // Physical key codes; all shortcuts use Control + Option.
@@ -24,10 +25,13 @@ import ApplicationServices
         (.twoThirdsLeft, 21, "4"), (.twoThirdsRight, 23, "5"),
         (.topLeft, 12, "Q"), (.topRight, 13, "W"), (.bottomLeft, 0, "A"), (.bottomRight, 1, "S")]
     init(defaults: UserDefaults = IndependentTools.defaults, registration: WindowManagerShortcutRegistration? = nil,
-         trustReader: @escaping () -> Bool = { AXIsProcessTrusted() }, trackApplications: Bool = true,
+         trustReader: @escaping () -> Bool = { AXIsProcessTrusted() },
+         trustRequester: @escaping () -> Bool = {
+             AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
+         }, trackApplications: Bool = true,
          applyOverride: ((WindowLayout) -> Void)? = nil) {
         self.defaults = defaults; self.registration = registration ?? CarbonWindowManagerShortcuts()
-        self.trustReader = trustReader; self.trackApplications = trackApplications; self.applyOverride = applyOverride
+        self.trustReader = trustReader; self.trustRequester = trustRequester; self.trackApplications = trackApplications; self.applyOverride = applyOverride
         trusted = trustReader()
         if trackApplications {
             select(NSWorkspace.shared.frontmostApplication)
@@ -50,6 +54,13 @@ import ApplicationServices
     func refresh() {
         trusted = trustReader()
         if trackApplications { select(NSWorkspace.shared.frontmostApplication) }
+    }
+    func requestPermission() {
+        trusted = trustRequester()
+        status = trusted ? "アクセシビリティは許可済みです。" : "システム設定のアクセシビリティで「ウィンドウマネージャー」をONにし、「許可を再確認」を押してください。一覧にない場合は「許可対象をFinderで表示」から表示したアプリを＋で追加してください。"
+    }
+    func revealPermissionApp() {
+        NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
     }
     func openSettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
@@ -158,8 +169,13 @@ struct WindowManagerView: View {
                             Text("MyToolBoxを開く直前に使っていたアプリの、選択中のウィンドウを操作します。").font(.caption).foregroundStyle(.secondary)
                             Label(model.trusted ? "アクセシビリティ：許可済み" : "アクセシビリティ：許可が必要", systemImage: model.trusted ? "checkmark.shield" : "lock.shield")
                             HStack {
+                                Button("許可を要求") { model.requestPermission() }
                                 Button("システム設定を開く") { model.openSettings() }
                                 Button("許可を再確認") { model.refresh() }
+                            }
+                            if !model.trusted {
+                                Text("本体MyToolBoxとは別に、独立版「ウィンドウマネージャー」の許可が必要です。").font(.caption).foregroundStyle(.secondary)
+                                Button("許可対象をFinderで表示") { model.revealPermissionApp() }
                             }
                         }
                     }
@@ -187,6 +203,7 @@ struct WindowManagerView: View {
                 }.padding(24)
             }
         }.frame(width: 720, height: 690).onAppear { model.refresh() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in model.refresh() }
     }
 }
 private struct LayoutPreview: View {

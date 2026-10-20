@@ -26,7 +26,7 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 - App/Core/Monitoring/UI/Utilities、直列actor取得、sleep/wake基準リセット、60秒履歴、設定永続化。
 - メニューは仕切り線なし、FANの右にRAM残り（RAMスティックアイコン）・CPU温度・GPU温度（文字のみ）を1段表示で集約。使用率などは2段表示。
 - メニュー注意色（BAT 50%以下黄色／20%以下赤など）・赤の明滅、動きを減らす設定に対応。
-- メニューバーから小型ポップオーバー（一覧カード→7詳細／設定、外側クリックで閉じる）・グラフ・設定・順序／表示／単位／周期・明示操作によるログイン起動UI。
+- メニューバーの一覧アイコンは通常の一覧ウィンドウ、監視数値は独立モニターを開く形へ変更。一覧にも専用アプリアイコンを表示（/Applicationsへ配置・本体再起動済み）。設定・順序／表示／単位／周期・明示操作によるログイン起動UIは維持。
 - /Applicationsへ配置、ログイン起動の有効状態確認。定期ログ（10秒・7日、ローカルJSONL、設定変更可）。
 - 専用アプリアイコン（工具箱＋モニター波形、16〜1024px ICNS）。
 - Xcodeプロジェクト、ローカル.app、Swift Packageの共通ライブラリ・CLI PoC・単体テスト、標準verifyのアプリ検証。
@@ -57,9 +57,10 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 
 - [残る実機確認](sessions/2026-10-15-52-remaining-live-fixes.md)：メモJSON往復・表のWindows 98実表示／編集／コピー・SQL復帰を確認。ログの旧結果コピーとclassic ×の不動作を修正。
 - メモ・計測タイマー3本の[独立プロセス化](sessions/2026-10-20-independent-tools.md)を実装・配置済み。本体再起動後の編集／計測継続・PID維持を実機確認。
-- Dockと通常のツール一覧ウィンドウを追加。メニュー一覧も維持。/Applicationsへ反映済み、通常一覧の表示確認済み。Dockから一覧を開けることをユーザーが実機確認済み（2026-10-20）。検証は[sessions記録](sessions/2026-10-20-dock-launcher.md)。
+- Dockと通常のツール一覧ウィンドウを追加。当時はメニュー一覧も維持。/Applicationsへ反映済み、通常一覧の表示確認済み。Dockから一覧を開けることをユーザーが実機確認済み（2026-10-20）。検証は[sessions記録](sessions/2026-10-20-dock-launcher.md)。
 - [モニター100％表示・部品小型化](sessions/2026-10-20-monitor-compact.md)と[可変ウィンドウ](sessions/2026-10-20-resizable-windows.md)を本番へ反映。表示・枠の拡縮・小型時のスクロール・一覧列数の追従を実機確認済み。
 ## 進行中
+[ツール小窓化の一括反映](sessions/2026-10-20-compact-tools-release.md)：このチャットの21ツールを小型化。カレンダーとクイックメモのサイズは維持。最終Full・検証器8件成功。コミット／配置の結果は記録を参照。
 独立55ツールの青い専用アイコンと一覧スクロール対策を[本番反映済み](sessions/2026-10-20-04-icons-launcher-deploy.md)。初回配置の可変一覧起動クラッシュを修正し、170単体・Full・4テーマ×3サイズ描画・実画面の上下スクロール・設定維持を確認。[アイコン仕様](docs/TOOL_ICONS.md)。
 [全55ツールの独立化](sessions/2026-10-20-all-independent-tools.md)は[一括配置済み](sessions/2026-10-20-combined-deploy.md)。カレンダー・ウィンドウ配置も[最新版へ切替済み](sessions/2026-10-20-helper-latest-shortcuts.md)。設定維持・呼出し／配置／復元キーを利用者が実入力確認。
 [IME・実sleep・8時間観測](sessions/2026-10-15-54-ime-sleep-soak.md)はユーザー依頼で中止。監視・検証用アプリと定期追跡を停止。[ロードマップ](docs/ROADMAP.md)・[可視化案](docs/VISUALIZATION_ROADMAP.md)は継続。

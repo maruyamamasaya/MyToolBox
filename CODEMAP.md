@@ -7,7 +7,7 @@
 | ツール一覧 | Sources/MyToolBox/App/ToolCatalog.swift、Sources/MyToolBox/UI/ToolLauncher.swift | ToolID、ToolCategory、matches、openTool | AppDelegate.showTools | 描画・実機導線確認 |
 | ローカル12ツール | Sources/MyToolBox/Tools、Sources/MonitorKit/Tools | ToolWindows、ToolPage、BusinessDays、CSVDocument、CSVModel、SpeakerModel、MicrophoneModel、TextTransformModel、ClipboardFormatterModel、SequentialText、ClipboardTable、TextCleaner | ToolWindows.show | TextToolsTests.swift、LocalToolsTests.swift、tools/RenderLocalTools.swift |
 | 行・置換・リスト | Sources/MonitorKit/Tools/LineTools.swift、StringReplacer.swift、ListConverter.swift、Sources/MyToolBox/Tools/LineToolViews.swift、ReplacerView.swift | LineTools、ReplacerModel、ClipboardWorkspaceView、TextProcessor | ToolWindows.show | LineUtilityTests.swift、RegexBudgetProbe.swift |
-| 起動・メニューバー | Sources/MyToolBox/App/MyToolBoxApp.swift | NSStatusItem、NSPopover、togglePopover | AppDelegate | Xcode build、実機手順 |
+| 起動・メニューバー | Sources/MyToolBox/App/MyToolBoxApp.swift | NSStatusItem、openTools、openSystemMonitor | AppDelegate | Xcode build、実機手順 |
 | UI取得ループ・sleep・login | Sources/MyToolBox/App/MonitorStore.swift | suspend、resume、setLogin | MonitorStore.start | 実機手順、reset単体 |
 | 一覧カード・詳細・グラフ | Sources/MyToolBox/UI/Dashboard.swift | Chart、LineMark | Dashboard | History単体、実機手順 |
 | 2段メニューバー描画 | Sources/MyToolBox/UI/StatusStrip.swift | draw、Cell、accessibilityPerformPress | StatusStrip.update | オフスクリーン描画、実機手順 |

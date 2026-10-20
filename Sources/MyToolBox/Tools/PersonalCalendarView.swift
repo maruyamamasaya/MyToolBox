@@ -93,31 +93,48 @@ struct PersonalCountdownView: View {
     init(model: PersonalCalendarModel? = nil) { _model = StateObject(wrappedValue: model ?? PersonalCalendarModel()) }
     @State private var draft: PersonalCountdown?
     @State private var deleting: PersonalCountdown?
+    @State private var showsSettings = false
     var body: some View {
-        ToolPage("カウントダウン", subtitle: "大切な日や目標まで、あと何日。", symbol: "hourglass", tint: .mint) {
+        VStack(spacing: 8) {
+            HStack {
+                Label("カウントダウン", systemImage: "hourglass").font(.headline)
+                Spacer(minLength: 0)
+                Button { var entry = PersonalCountdown(); entry.date = Date(); draft = entry } label: {
+                    Image(systemName: "plus")
+                }.accessibilityLabel("目標を追加").disabled(model.loadFailed)
+                Button { showsSettings = true } label: { Image(systemName: "gearshape") }
+                    .accessibilityLabel("カウントダウンの設定")
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ThemeMenu()
+                            Text("目標はこのMacに自動保存。日数は日本時間の暦日で計算し、今日は0日です。時間の目標は見積もりで、累計時間は自分で更新します。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 260)
+                    }
+            }
+            if !model.error.isEmpty {
+                Text(model.error).font(.caption).foregroundStyle(.red).textSelection(.enabled)
+            }
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        HStack {
-                            ToolSectionLabel(title: "カウントダウン", symbol: "hourglass")
-                            Spacer()
-                            Button("目標を追加") { var entry = PersonalCountdown(); entry.date = Date(); draft = entry }
-                                .buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.loadFailed)
-                        }
-                        if !model.error.isEmpty { Text(model.error).foregroundStyle(.red).textSelection(.enabled) }
+                    VStack(alignment: .leading, spacing: 8) {
                         if model.entries.isEmpty && !model.loadFailed {
-                            Text("「40歳まで」「1万時間まで」など、名前と目標を自分で設定できます。")
-                                .font(theme.font(12)).foregroundStyle(.secondary).padding(.vertical, 12)
+                            VStack(spacing: 12) {
+                                Text("目標日まで、あと何日？").foregroundStyle(.secondary)
+                                Button("目標を追加", systemImage: "plus") {
+                                    var entry = PersonalCountdown(); entry.date = Date(); draft = entry
+                                }.buttonStyle(.borderedProminent)
+                            }.frame(maxWidth: .infinity).padding(.vertical, 32)
                         }
                         ForEach(model.entries) { entry in
                             countdownCard(entry, now: context.date)
                         }
-                        ToolFootnote(text: "目標はこのMacに自動保存。日数は日本時間の暦日で計算し、今日は0日です。時間の目標は見積もりで、累計時間は自分で更新します。")
-                    }.padding(24)
+                    }
                 }
             }
         }
-        .frame(minWidth: 880, minHeight: 520)
+        .padding(10).controlSize(.small)
+        .frame(minWidth: 280, idealWidth: 300, minHeight: 240, idealHeight: 280)
         .environment(\.calendar, BusinessDays.calendar).environment(\.timeZone, BusinessDays.calendar.timeZone)
         .environment(\.locale, Locale(identifier: "ja_JP"))
         .sheet(item: $draft) { entry in CountdownEditor(entry: entry) { model.save($0) } }
@@ -128,30 +145,37 @@ struct PersonalCountdownView: View {
     }
     private func countdownCard(_ entry: PersonalCountdown, now: Date) -> some View {
         let days = entry.remainingDays(now: now)
-        return ToolCard {
-            HStack(spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(entry.title).font(theme.font(17, weight: .semibold)).textSelection(.enabled)
-                    if entry.kind == .hours {
-                        Text("開始日：" + BusinessDays.key(entry.date)).font(theme.font(14))
-                        Text("1日あたり：\(entry.hoursPerDay.formatted())時間 · 目標：\(entry.targetHours.formatted())時間").font(theme.font(14))
-                        CountdownProgressInput(entry: entry) { model.updateCompletedHours(entry.id, text: $0) }
-                    }
-                    if let date = entry.targetDate {
-                        Text((entry.kind == .date ? "目標日：" + BusinessDays.key(date) : "終了予定日：" + BusinessDays.key(date)))
-                            .font(theme.font(14)).foregroundStyle(.secondary)
-                    }
-                    HStack {
-                        Button("編集") { draft = entry }
-                        Button("削除") { deleting = entry }
-                    }
-                }
-                Spacer()
-                Text(entry.kind == .hours && entry.completedHours >= entry.targetHours ? "目標達成" : days < 0 ? "\(-days)日経過" : days == 0 ? "当日" : "あと\(days)日")
-                    .font(theme.font(26, weight: .bold, design: .rounded)).monospacedDigit()
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 6) {
+                Text(entry.title).font(theme.font(13, weight: .semibold))
+                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Menu {
+                    Button("編集") { draft = entry }
+                    Button("削除", role: .destructive) { deleting = entry }
+                } label: { Image(systemName: "gearshape") }
+                    .menuStyle(.borderlessButton).fixedSize()
+                    .accessibilityLabel(entry.title + "の設定")
+            }
+            Text(entry.kind == .hours && entry.completedHours >= entry.targetHours ? "目標達成" : days < 0 ? "\(-days)日経過" : days == 0 ? "当日" : "あと\(days)日")
+                .font(theme.font(32, weight: .bold, design: .rounded)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.5)
+            if let date = entry.targetDate {
+                Text((entry.kind == .date ? "目標日 " : "終了予定 ") + BusinessDays.key(date))
+                    .font(theme.font(11)).foregroundStyle(.secondary)
+            }
+            if entry.kind == .hours {
+                CountdownProgressInput(entry: entry) { model.updateCompletedHours(entry.id, text: $0) }
+                    .font(theme.font(11))
+                    .help("開始日：" + BusinessDays.key(entry.date) + " / 1日 \(entry.hoursPerDay.formatted())時間 / 目標 \(entry.targetHours.formatted())時間")
             }
         }
+        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius))
+        .overlay(RoundedRectangle(cornerRadius: theme.radius).strokeBorder(theme.edge.opacity(0.14)))
+        .classicBevel()
     }
+
 }
 
 private struct CountdownProgressInput: View {
@@ -166,7 +190,7 @@ private struct CountdownProgressInput: View {
         HStack {
             Text("累計時間")
             TextField("累計時間", text: $text)
-                .textFieldStyle(ThemeTextFieldStyle()).frame(width: 120)
+                .textFieldStyle(ThemeTextFieldStyle()).frame(width: 70)
                 .accessibilityLabel(entry.title + "の累計時間")
                 .onSubmit { commit() }
             Text("時間")
@@ -216,9 +240,9 @@ private struct CountdownEditor: View {
                     catch { self.error = error.localizedDescription }
                 }.keyboardShortcut(.defaultAction)
             }
-        }.padding(26).frame(width: 560)
+        }.padding(16).frame(width: 360)
     }
     private func numberField(_ title: String, value: Binding<Double>) -> some View {
-        HStack { Text(title); Spacer(); TextField(title, value: value, format: .number).textFieldStyle(ThemeTextFieldStyle()).frame(width: 170) }
+        HStack { Text(title); Spacer(); TextField(title, value: value, format: .number).textFieldStyle(ThemeTextFieldStyle()).frame(width: 110) }
     }
 }

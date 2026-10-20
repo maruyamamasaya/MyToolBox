@@ -220,27 +220,64 @@ struct SequentialTextView: View {
     }
 }
 struct TextCleanerView: View {
-    @Environment(\.appTheme) private var theme
     @ObservedObject var model: TextTransformModel
-    private let tint = Color.pink
+    @State private var showsSettings = false
     var body: some View {
-        ToolPage("テキストクリーナー", subtitle: "貼り付けた文章を、すっきり整える。", symbol: "sparkles", tint: tint) {
-            VStack(spacing: 18) {
-                ThemePicker("モード", selection: $model.cleanerMode, options: ["クリーニング", "文字チェック", "可視化"].map { ($0, $0) }, tabs: true)
-                HStack(spacing: 8) {
-                    ForEach(["プレーンテキスト", "不可視文字を除去", "連続空行を整理", "箇条書きの改行を結合"], id: \.self) { Text($0).font(theme.font( 11, weight: .medium)).padding(.horizontal, 11).padding(.vertical, 8).background(tint.opacity(0.09), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 50)) }
-                    Spacer()
+        VStack(spacing: 6) {
+            HStack {
+                Text("テキストクリーナー").font(.headline)
+                Spacer()
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("クリーナーの設定と説明")
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ThemeMenu()
+                            Text("入力すると自動処理します。クリーニングは通常の空白と1つの改行を残し、改行コード・不可視文字・連続空行・箇条書きの改行を整理します。文字チェックは文字コードの自動判定ではありません。可視化は空白・改行・タブを記号で表示します。入力は最大1MiB。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 280)
+                    }
+            }
+            Picker("モード", selection: $model.cleanerMode) {
+                ForEach(["クリーニング", "可視化", "文字チェック"], id: \.self) { Text($0).tag($0) }
+            }.pickerStyle(.segmented).labelsHidden()
+            TextEditor(text: $model.input).font(.system(.body, design: .monospaced))
+                .frame(minHeight: 55, maxHeight: .infinity).accessibilityLabel("元のテキスト")
+                .overlay(alignment: .topLeading) {
+                    if model.input.isEmpty {
+                        Text("元のテキスト").font(.caption).foregroundStyle(.secondary).padding(6).allowsHitTesting(false).accessibilityHidden(true)
+                    }
                 }
-                HStack(spacing: 16) {
-                    TextPane(title: "元のテキスト", symbol: "text.alignleft", text: $model.input, tint: tint)
-                    TextPane(title: model.cleanerMode == "クリーニング" ? "クリーンなテキスト" : model.cleanerMode, symbol: "sparkles", text: $model.output, editable: false, tint: tint)
-                }
-                TextToolActions(model: model, tint: tint)
-                ToolCard {
-                    ToolFootnote(text: "文字チェックは不可視文字などの確認用で、文字コードの自動判定ではありません。可視化は空白・改行・タブを記号に置き換えます。通常の空白と1つの改行は残します。改行コードを統一し、ノーブレークスペース・ゼロ幅スペース・BOMを整理。単独の「・」は次の本文とつなぎます。元の文章を左側で確認できます。")
-                }
-            }.padding(24)
-        }.frame(minWidth: 940, minHeight: 670).onChange(of: model.cleanerMode) { _, _ in model.update() }.onChange(of: model.input) { _, _ in model.update() }.onDisappear { model.stop() }
+            ScrollView {
+                Text(model.output.isEmpty ? (model.busy ? "処理中…" : "処理結果") : model.output)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(model.output.isEmpty ? Color.secondary : Color.primary)
+                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(8)
+            }.frame(minHeight: 60, maxHeight: .infinity)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+                .accessibilityLabel("処理結果")
+            Text(model.busy ? "処理中…" : model.status.isEmpty ? model.count : model.status)
+                .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Button { model.input = NSPasteboard.general.string(forType: .string) ?? "" } label: {
+                    Image(systemName: "doc.on.clipboard").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("貼り付け")
+                Button { model.input = "" } label: {
+                    Image(systemName: "trash").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("入力をクリア").disabled(model.input.isEmpty)
+                Spacer(minLength: 0)
+                Button { model.update() } label: { Text("実行").frame(minWidth: 28, minHeight: 28) }
+                    .buttonStyle(.borderedProminent).disabled(model.busy)
+                Button { model.copy() } label: { Text("コピー").frame(minHeight: 28) }
+                    .disabled(model.busy || model.output.isEmpty)
+            }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: 320, idealWidth: 340, minHeight: 340, idealHeight: 360)
+            .onChange(of: model.cleanerMode) { _, _ in model.update() }
+            .onChange(of: model.input) { _, _ in model.update() }
+            .onDisappear { model.stop() }
     }
 }
 struct TextToolActions: View {

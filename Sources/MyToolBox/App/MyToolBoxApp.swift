@@ -27,7 +27,6 @@ import Combine
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private var status: NSStatusItem!
     private var toolboxStatus: NSStatusItem!
-    private var showingTools = false
     private var launcherWindow: ToolWindow?
     private var monitorWindow: ToolWindow?
     private var radarStatus: NSStatusItem!
@@ -36,7 +35,6 @@ import Combine
     private var weatherAgeTimer: Timer?
     private var weatherWakeObserver: NSObjectProtocol?
     private lazy var toolWindows = ToolWindows()
-    private var popover: NSPopover!
     private var store: MonitorStore!
     private var strip: StatusStrip!
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -72,23 +70,20 @@ import Combine
         store = MonitorStore()
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         strip = StatusStrip(frame: .zero)
-        strip.onPress = { [weak self] in self?.togglePopover() }
+        strip.onPress = { [weak self] in self?.openSystemMonitor() }
         status.button?.title = ""
-        status.button?.target = self; status.button?.action = #selector(togglePopover)
-        status.button?.setAccessibilityLabel("MyToolBox 詳細と設定")
+        status.button?.target = self; status.button?.action = #selector(openSystemMonitor)
+        status.button?.setAccessibilityLabel("MyToolBox システムモニターを開く")
         status.button?.addSubview(strip)
         store.updateStatus = { [weak self] in self?.refreshStrip() }
         refreshStrip()
-        popover = NSPopover()
-        popover.behavior = .transient
-        popover.contentSize = Dashboard.preferredSize
         toolboxStatus = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         toolboxStatus.button?.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "MyToolBox ツール一覧")
         toolboxStatus.button?.image?.isTemplate = true
         toolboxStatus.button?.toolTip = "MyToolBox — ツール一覧"
         toolboxStatus.button?.setAccessibilityLabel("MyToolBox ツール一覧")
         toolboxStatus.button?.target = self
-        toolboxStatus.button?.action = #selector(toggleTools)
+        toolboxStatus.button?.action = #selector(openTools)
         radarStatus = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         radarStatus.button?.image = NSImage(systemSymbolName: "cloud.rain", accessibilityDescription: "気象庁 雨雲レーダー")
         radarStatus.button?.image?.isTemplate = true
@@ -121,32 +116,9 @@ import Combine
         status.length = strip.intrinsicContentSize.width
         strip.frame = NSRect(origin: .zero, size: strip.intrinsicContentSize)
     }
-    private func present<Content: View>(_ content: Content, size: NSSize, anchor: NSStatusBarButton) {
-        rainRadar.close()
-        if popover.isShown { popover.close() }
-        popover.contentViewController = NSHostingController(rootView: ThemeRoot { content })
-        popover.contentSize = size
-        NSApp.activate(ignoringOtherApps: true)
-        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
-        popover.contentViewController?.view.window?.makeKey()
-    }
-    private func showMonitor(settings: Bool = false, fromToolbox: Bool = false) {
-        guard let button = fromToolbox ? toolboxStatus.button : status.button else { return }
-        showingTools = false
-        store.selected = settings ? "settings" : "overview"
-        store.refreshLoginStatus()
-        present(Dashboard(store: store, openTools: { [weak self] in self?.showTools() }, openWindow: { [weak self] in self?.toolWindows.show(.systemMonitor) }), size: Dashboard.preferredSize, anchor: button)
-    }
-    private func showTools() {
-        guard let button = toolboxStatus.button else { return }
-        showingTools = true
-        present(ToolLauncher(openTool: { [weak self] tool in
-            self?.popover.close(); self?.toolWindows.show(tool)
-        }, openMonitorSettings: { [weak self] in self?.showMonitor(settings: true, fromToolbox: true) }, openWindow: { [weak self] in self?.showToolsWindow() }), size: NSSize(width: ToolLauncher.preferredWidth, height: ToolLauncher.preferredHeight), anchor: button)
-    }
     func showToolsWindow() {
         guard IndependentTools.current == nil, store != nil else { return }
-        popover.performClose(nil)
+        rainRadar.close()
         if launcherWindow == nil {
             let controller = ToolWindow(title: "MyToolBox — ツール一覧", view: ToolLauncher(
                 openTool: { [weak self] tool in
@@ -168,7 +140,7 @@ import Combine
     }
     private func showMonitorWindow(settings: Bool = false, preserveSelection: Bool = false) {
         guard store != nil else { return }
-        popover.performClose(nil)
+        rainRadar.close()
         if !preserveSelection { store.selected = settings ? "settings" : "overview" }
         store.refreshLoginStatus()
         if monitorWindow == nil {
@@ -188,14 +160,14 @@ import Combine
     }
     @objc func toggleRainRadar() {
         guard let button = radarStatus.button else { return }
-        popover.performClose(nil)
         rainRadar.toggle(anchor: button)
     }
-    @objc func toggleTools() {
-        if popover.isShown && showingTools { popover.performClose(nil) } else { showTools() }
+    @objc func openTools() {
+        showToolsWindow()
     }
-    @objc func togglePopover() {
-        if popover.isShown && !showingTools { popover.performClose(nil) } else { showMonitor() }
+    @objc func openSystemMonitor() {
+        rainRadar.close()
+        toolWindows.show(.systemMonitor)
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if let tool = IndependentTools.current { toolWindows.show(tool); return false }

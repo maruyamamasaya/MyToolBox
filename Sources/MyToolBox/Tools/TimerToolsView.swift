@@ -43,35 +43,45 @@ import Combine
 
 struct TimerBoardView: View {
     @ObservedObject var model: TimerBoardModel
+    @State private var showsSettings = false
     var body: some View {
-        ToolPage("タイマーボード", subtitle: "複数のカウントダウン・ストップウォッチをまとめて管理", symbol: "square.grid.2x2", tint: .orange) {
-            VStack(spacing: 14) {
-                HStack {
-                    Text("\(model.timers.count) / 12")
-                    Spacer()
-                    Button("すべて一時停止") { model.pauseAll() }
-                    Button("完了をリセット") { model.resetAll(finishedOnly: true) }
-                    Button("すべてリセット") { model.resetAll(finishedOnly: false) }
-                    Button("追加", systemImage: "plus") { model.add() }.disabled(model.timers.count >= 12)
-                }
-                if !model.message.isEmpty { Text(model.message).foregroundStyle(.orange).accessibilityAddTraits(.updatesFrequently) }
-                ScrollView {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Text("タイマーボード").font(.headline)
+                Text("\(model.timers.count)/12").font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button { model.add() } label: { Image(systemName: "plus").frame(width: 28, height: 28).contentShape(Rectangle()) }
+                    .accessibilityLabel("タイマーを追加").disabled(model.timers.count >= 12)
+                Button { showsSettings = true } label: { Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle()) }
+                    .accessibilityLabel("ボードの設定")
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Button("すべて一時停止") { model.pauseAll() }
+                            Button("完了をリセット") { model.resetAll(finishedOnly: true) }
+                            Button("すべてリセット") { model.resetAll(finishedOnly: false) }
+                            ThemeMenu()
+                            Text("設定と計測状態は自動保存。スリープ中も計測します。閉じると全一時停止。通知は画面内の色と点滅です。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 260)
+                    }
+            }
+            if !model.message.isEmpty {
+                Text(model.message).font(.caption).foregroundStyle(.orange)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+            ScrollView {
+                VStack(spacing: 6) {
                     if model.timers.isEmpty {
-                        VStack(spacing: 18) {
-                            Text("最初のタイマーを追加しましょう").font(.title2)
-                            Text("時間を設定して開始。最大12個を同時に使えます。").foregroundStyle(.secondary)
-                            Button("タイマーを追加", systemImage: "plus") { model.add() }.buttonStyle(.borderedProminent)
-                        }.frame(maxWidth: .infinity).padding(60)
+                        Button("タイマーを追加", systemImage: "plus") { model.add() }
+                            .buttonStyle(.borderedProminent).padding(.vertical, 32)
                     }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 310), alignment: .top)], spacing: 14) {
-                        ForEach(Array(model.timers.enumerated()), id: \.element.id) { index, timer in
-                            TimerBoardCard(model: model, index: index, timer: timer)
-                        }
+                    ForEach(Array(model.timers.enumerated()), id: \.element.id) { index, timer in
+                        TimerBoardCard(model: model, index: index, timer: timer)
                     }
                 }
-                ToolFootnote(text: "設定と実行状態は自動保存。スリープ中・アプリ終了中も経過時間に含みます。ウィンドウを閉じると一時停止します。通知は画面内の色と表示です。")
-            }.padding(22)
-        }.frame(minWidth: 760, idealWidth: 880, minHeight: 600, idealHeight: 720)
+            }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: 300, idealWidth: 320, minHeight: 220, idealHeight: 280)
     }
 }
 
@@ -79,50 +89,83 @@ private struct TimerBoardCard: View {
     @ObservedObject var model: TimerBoardModel
     let index: Int
     let timer: UtilityTimer
+    @Environment(\.appTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showsSettings = false
     private var finished: Bool { timer.finished(at: model.now) }
     private var warning: Bool { timer.countdown && timer.alerts && (timer.startedAt != nil || finished) && timer.remaining(at: model.now) <= Double(timer.warningSeconds) }
+    private var time: String {
+        let full = UtilityTimer.display(timer.countdown ? timer.remaining(at: model.now) : timer.elapsed(at: model.now))
+        return full.hasPrefix("00:") ? String(full.dropFirst(3)) : full
+    }
     var body: some View {
-        ToolCard {
-            VStack(spacing: 12) {
-                TextField("タイマー名", text: $model.timers[index].name).font(.headline)
-                Picker("種類", selection: $model.timers[index].countdown) { Text("カウントダウン").tag(true); Text("ストップウォッチ").tag(false) }
-                    .pickerStyle(.segmented).disabled(timer.startedAt != nil || timer.elapsed > 0)
-                Text(UtilityTimer.display(timer.countdown ? timer.remaining(at: model.now) : timer.elapsed(at: model.now)))
-                    .font(.system(size: 40, weight: .medium, design: .monospaced)).minimumScaleFactor(0.6).lineLimit(1)
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Text(timer.name).font(.caption.weight(.semibold)).lineLimit(1).help(timer.name)
+                Spacer(minLength: 0)
+                Text(finished ? "終了" : timer.startedAt != nil ? "計測中" : timer.elapsed > 0 ? "一時停止" : timer.countdown ? "準備完了" : "ストップウォッチ")
+                    .font(.caption2).foregroundStyle(.secondary)
+                Button { showsSettings = true } label: { Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle()) }
+                    .accessibilityLabel(timer.name + "の設定")
+                    .popover(isPresented: $showsSettings) { settings }
+            }
+            HStack(spacing: 8) {
+                Text(time)
+                    .font(.system(size: 25, weight: .medium, design: .monospaced))
+                    .minimumScaleFactor(0.6).lineLimit(1)
                     .foregroundStyle(warning ? Color.orange : Color.primary)
                     .opacity(warning && !reduceMotion && Int(model.now.timeIntervalSince1970 * 2) % 2 == 0 ? 0.5 : 1)
-                Text(finished ? "終了しました" : timer.startedAt != nil ? "計測中" : timer.elapsed > 0 ? "一時停止中" : "準備完了").foregroundStyle(.secondary)
-                HStack {
-                    Button(timer.startedAt == nil ? "開始" : "一時停止") { model.toggle(index) }.buttonStyle(.borderedProminent).disabled(timer.countdown && timer.duration <= 0)
-                    Button("リセット") { model.reset(index) }
+                    .accessibilityLabel(timer.name + " " + time)
+                Spacer(minLength: 0)
+                Button { model.toggle(index) } label: {
+                    Text(timer.startedAt == nil ? "開始" : "一時停止").frame(minWidth: 48, minHeight: 28)
                 }
-                DisclosureGroup("設定") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if timer.countdown {
-                            DurationFields(seconds: $model.timers[index].duration).disabled(timer.startedAt != nil || timer.elapsed > 0)
-                            Toggle("画面内で点滅通知", isOn: $model.timers[index].alerts)
-                            Picker("通知開始", selection: $model.timers[index].warningSeconds) {
-                                Text("終了時").tag(0); Text("残り10秒").tag(10); Text("残り30秒").tag(30); Text("残り1分").tag(60)
-                            }
-                        }
-                        TextField("メモ", text: $model.timers[index].note, axis: .vertical).lineLimit(2...4)
-                        HStack {
-                            Button { model.move(index, by: -1) } label: { Image(systemName: "arrow.up") }.disabled(index == 0).help("前へ移動")
-                            Button { model.move(index, by: 1) } label: { Image(systemName: "arrow.down") }.disabled(index == model.timers.count - 1).help("後へ移動")
-                            Button("複製") { model.duplicate(index) }.disabled(model.timers.count >= 12)
-                            Spacer()
-                            Button("削除", role: .destructive) { model.remove(index) }
-                        }
-                    }.padding(.top, 10)
+                    .buttonStyle(.borderedProminent).disabled(timer.countdown && timer.duration <= 0)
+                Button { model.reset(index) } label: { Image(systemName: "arrow.counterclockwise").frame(width: 28, height: 28).contentShape(Rectangle()) }
+                    .accessibilityLabel(timer.name + "をリセット")
+            }
+        }.padding(8)
+            .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius).strokeBorder(theme.edge.opacity(0.14)))
+            .classicBevel()
+
+    }
+    private func binding<Value>(_ keyPath: WritableKeyPath<UtilityTimer, Value>) -> Binding<Value> {
+        Binding(get: {
+            (model.timers.first { $0.id == timer.id } ?? timer)[keyPath: keyPath]
+        }, set: { value in
+            guard let current = model.timers.firstIndex(where: { $0.id == timer.id }) else { return }
+            model.timers[current][keyPath: keyPath] = value
+            model.save()
+        })
+    }
+    private var settings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TextField("タイマー名", text: binding(\.name))
+                .accessibilityLabel("タイマー名")
+            Picker("種類", selection: binding(\.countdown)) {
+                Text("カウントダウン").tag(true); Text("ストップウォッチ").tag(false)
+            }.pickerStyle(.segmented).disabled(timer.startedAt != nil || timer.elapsed > 0)
+            if timer.countdown {
+                DurationFields(seconds: binding(\.duration))
+                    .disabled(timer.startedAt != nil || timer.elapsed > 0)
+                Toggle("画面内で点滅通知", isOn: binding(\.alerts))
+                Picker("通知開始", selection: binding(\.warningSeconds)) {
+                    Text("終了時").tag(0); Text("残り10秒").tag(10)
+                    Text("残り30秒").tag(30); Text("残り1分").tag(60)
                 }
             }
-        }.onChange(of: timer.name) { _, _ in model.save() }
-            .onChange(of: timer.note) { _, _ in model.save() }
-            .onChange(of: timer.duration) { _, _ in model.save() }
-            .onChange(of: timer.countdown) { _, _ in model.save() }
-            .onChange(of: timer.alerts) { _, _ in model.save() }
-            .onChange(of: timer.warningSeconds) { _, _ in model.save() }
+            TextField("メモ", text: binding(\.note), axis: .vertical).lineLimit(2...4)
+            HStack {
+                Button { showsSettings = false; model.move(index, by: -1) } label: { Image(systemName: "arrow.up") }
+                    .disabled(index == 0).accessibilityLabel("前へ移動")
+                Button { showsSettings = false; model.move(index, by: 1) } label: { Image(systemName: "arrow.down") }
+                    .disabled(index == model.timers.count - 1).accessibilityLabel("後へ移動")
+                Button("複製") { showsSettings = false; model.duplicate(index) }.disabled(model.timers.count >= 12)
+                Spacer()
+                Button("削除", role: .destructive) { showsSettings = false; model.remove(index) }
+            }
+        }.padding(12).frame(width: 300).controlSize(.small)
     }
 }
 
@@ -197,50 +240,132 @@ struct DurationFields: View {
 
 struct FocusTimerView: View {
     @ObservedObject var model: FocusTimerModel
+    var body: some View {
+        Group {
+            if model.pomodoro {
+                CompactPomodoroView(model: model)
+            } else {
+                CompactMeetingTimerView(model: model)
+            }
+        }
+    }
+}
+
+struct CompactMeetingTimerView: View {
+    @ObservedObject var model: FocusTimerModel
+    @State private var showsSettings = false
+    private var remaining: String {
+        let full = UtilityTimer.display(model.timer.remaining(at: model.now))
+        return full.hasPrefix("00:") ? String(full.dropFirst(3)) : full
+    }
+    private var duration: Binding<Double> {
+        Binding(get: { model.timer.duration }, set: { model.timer.duration = $0; model.reset() })
+    }
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Text("会議").font(.headline)
+                Spacer(minLength: 0)
+                Picker("会議時間", selection: duration) {
+                    ForEach([15, 30, 45, 60, 90], id: \.self) { minute in
+                        Text("\(minute)分").tag(Double(minute * 60))
+                    }
+                    if ![900.0, 1800, 2700, 3600, 5400].contains(model.timer.duration) {
+                        Text("カスタム").tag(model.timer.duration)
+                    }
+                }.labelsHidden().frame(width: 90).disabled(model.timer.startedAt != nil)
+                Button { showsSettings = true } label: { Image(systemName: "gearshape") }
+                    .accessibilityLabel("時間を設定")
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("会議時間").font(.headline)
+                            DurationFields(seconds: $model.timer.duration)
+                                .disabled(model.timer.startedAt != nil || model.timer.elapsed > 0)
+                            ThemeMenu()
+                            Text("スリープ中も計測。閉じると停止します。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 280)
+                    }
+            }
+            Spacer(minLength: 0)
+            Text(remaining)
+                .font(.system(size: 48, weight: .medium, design: .monospaced))
+                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
+                .foregroundStyle(model.timer.finished(at: model.now) ? Color.orange : Color.primary)
+                .accessibilityLabel("残り時間 \(remaining)")
+            ProgressView(value: model.timer.duration > 0 ? min(1, model.timer.elapsed(at: model.now) / model.timer.duration) : 0)
+            Group {
+                if model.timer.startedAt != nil {
+                    Text("終了予定 \(model.now.addingTimeInterval(model.timer.remaining(at: model.now)), style: .time)")
+                } else {
+                    Text(model.status == "時間を選んで開始してください" ? "準備完了" : model.status)
+                }
+            }.font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                Button(model.timer.startedAt == nil ? "開始" : "一時停止") { model.toggle() }
+                    .buttonStyle(.borderedProminent).disabled(model.timer.duration <= 0)
+                Button("リセット") { model.reset() }
+            }
+        }.padding(10).controlSize(.small)
+            .frame(minWidth: 240, idealWidth: 260, minHeight: 210, idealHeight: 210)
+    }
+}
+
+
+/// Small timer face; infrequent settings live in a popover to keep the clock visible.
+struct CompactPomodoroView: View {
+    @ObservedObject var model: FocusTimerModel
+    @State private var showsSettings = false
     @State private var work = 25
     @State private var rest = 5
+    private var remaining: String {
+        let full = UtilityTimer.display(model.timer.remaining(at: model.now))
+        return full.hasPrefix("00:") ? String(full.dropFirst(3)) : full
+    }
     var body: some View {
-        ToolPage(model.pomodoro ? "ポモドーロタイマー" : "会議タイマー", subtitle: model.pomodoro ? "集中と休憩を、自分のリズムで" : "時間を選んで開始。会議の残り時間をひと目で", symbol: model.pomodoro ? "timer" : "person.3", tint: .orange) {
-            VStack(spacing: 20) {
-                if !model.pomodoro {
-                    HStack {
-                        ForEach([15, 30, 45, 60, 90], id: \.self) { minute in
-                            Button("\(minute)分") { model.timer.duration = Double(minute * 60); model.reset() }
-                                .buttonStyle(.bordered).tint(model.timer.duration == Double(minute * 60) ? .orange : .secondary)
-                        }
-                    }.disabled(model.timer.startedAt != nil)
-                    DurationFields(seconds: $model.timer.duration).disabled(model.timer.startedAt != nil || model.timer.elapsed > 0)
-                }
-                ToolCard {
-                    VStack(spacing: 20) {
-                        Text(model.pomodoro ? (model.isBreak ? "休憩" : "作業") : "会議終了まで").font(.title2)
-                        Text(UtilityTimer.display(model.timer.remaining(at: model.now)))
-                            .font(.system(size: 76, weight: .medium, design: .monospaced)).minimumScaleFactor(0.5).lineLimit(1)
-                            .foregroundStyle(model.timer.finished(at: model.now) ? Color.orange : Color.primary)
-                        if !model.pomodoro, model.timer.startedAt != nil {
-                            Text("終了予定 \(model.now.addingTimeInterval(model.timer.remaining(at: model.now)), style: .time)").font(.title3)
-                        }
-                        ProgressView(value: model.timer.duration > 0 ? min(1, model.timer.elapsed(at: model.now) / model.timer.duration) : 0)
-                        Text(model.status).foregroundStyle(.secondary)
-                        HStack(spacing: 16) {
-                            Button(model.timer.startedAt == nil ? "開始" : "一時停止") { model.toggle() }.buttonStyle(.borderedProminent).controlSize(.large).disabled(model.timer.duration <= 0)
-                            Button("リセット") { model.reset() }.controlSize(.large)
-                        }
-                    }.frame(maxWidth: .infinity).padding(.vertical, 18)
-                }
-                if model.pomodoro {
-                    HStack { Text("今日の完了セッション"); Spacer(); Text("\(model.completed) 回").font(.title2.bold()) }
-                    DisclosureGroup("時間を設定") {
-                        HStack {
+        VStack(spacing: 8) {
+            HStack {
+                Text(model.isBreak ? "休憩" : "集中").font(.headline)
+                Spacer()
+                Text("今日 \(model.completed)回").font(.caption).foregroundStyle(.secondary)
+                Button { work = model.workMinutes; rest = model.breakMinutes; showsSettings = true } label: {
+                    Image(systemName: "gearshape")
+                }.accessibilityLabel("時間を設定")
+                    .disabled(model.timer.startedAt != nil)
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
                             Stepper("作業 \(work)分", value: $work, in: 1...180)
                             Stepper("休憩 \(rest)分", value: $rest, in: 1...60)
-                            Button("適用") { model.configure(work: work, rest: rest) }
-                        }.padding(.top, 12)
-                    }.disabled(model.timer.startedAt != nil)
-                }
-                ToolFootnote(text: "スリープ中も経過時間に含みます。終了は画面内で表示。ウィンドウを閉じると計測を終了します。" + (model.pomodoro ? " 作業・休憩の切替後は「開始」を押してください。" : ""))
-            }.padding(26)
-        }.frame(minWidth: 650, idealWidth: 720, minHeight: 600)
-            .onAppear { work = model.workMinutes; rest = model.breakMinutes }
+                            HStack {
+                                ThemeMenu()
+                                Spacer()
+                                Button("適用") { model.configure(work: work, rest: rest); showsSettings = false }
+                                    .buttonStyle(.borderedProminent)
+                            }
+                            Text("スリープ中も計測。閉じると停止。切替後は開始を押してください。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 260)
+                    }
+            }
+            Spacer(minLength: 0)
+            Text(remaining)
+                .font(.system(size: 48, weight: .medium, design: .monospaced))
+                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
+                .accessibilityLabel("残り時間 \(remaining)")
+            ProgressView(value: model.timer.duration > 0 ? min(1, model.timer.elapsed(at: model.now) / model.timer.duration) : 0)
+            Text(model.status == "時間を選んで開始してください" ? "準備完了" : model.status)
+                .font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                Button(model.timer.startedAt == nil ? "開始" : "一時停止") { model.toggle() }
+                    .buttonStyle(.borderedProminent).disabled(model.timer.duration <= 0)
+                Button("リセット") { model.reset() }
+            }
+        }
+        .padding(10).controlSize(.small)
+        .frame(minWidth: 240, idealWidth: 260, minHeight: 210, idealHeight: 210)
     }
 }

@@ -4,8 +4,9 @@
 MyToolBoxはツール集のシェルと個別ツールで構成する。システムモニターと11のローカルツールを実装。Swiftの共通監視ライブラリをCLI PoCとネイティブアプリが共有する。外部通信・DB・認証不要。
 
 ```text
-AppDelegate → ツール一覧NSStatusItem / 数値NSStatusItem → 単一NSPopover
-                          ToolLauncher → Dashboard / SettingsPanel
+AppDelegate → ツール一覧NSStatusItem → ToolLauncherウィンドウ
+            → 数値NSStatusItem → 独立システムモニター.app
+                          ToolLauncher → 本体の設定ウィンドウ
                          ↕ MonitorStore (MainActor, 表示・設定・通知)
                          ↓ await
                      MonitorEngine (actor, 直列取得・別周期)
@@ -21,7 +22,7 @@ Swift 5 language mode（Xcode 26.6 / Swift 6.3.3で検証）、macOS 14+ arm64�
 - `Sources/MyToolBox/App/ToolCatalog.swift`：実装済みツールのID・名称・説明・アイコン。AppDelegateが明示的に画面へ振り分ける。
 - `Sources/MyToolBox/App`：アプリ起動・ステータス項目・transient popover・UI状態・ログイン起動・sleep通知。
 - `Sources/MyToolBox/UI/AppTheme.swift`：3テーマのパレットと背景。ThemeRootが共通AppStorageを監視しEnvironmentへ注入。入力モデルを再作成せず全windowへ反映。ThemeControls/ThemeWindowChrome/ThemeNativeTable/ThemePixelIconがWindows 98部品を描画。詳細は[テーマ](docs/THEMES.md)。
-- `Sources/MyToolBox/UI`：390×620ptの一覧カード・詳細・グラフ・設定。popover内で画面を切替、再表示時は一覧へ戻す。
+- `Sources/MyToolBox/UI`：一覧カード・詳細・グラフ・設定。通常ウィンドウ内で画面を切り替える。
 - `Sources/MyToolBox/Tools`：共通ToolPage/ToolCard、11専用UI、ToolWindows、CSVModel、SpeakerModel、MicrophoneModel。window終了/sleepで音声停止。
 - `Sources/MonitorKit/Tools`：CSVパーサ・書出し、営業日、音声信号の純粋ロジック。祝日JSONをbundleから読込。テキスト変換も共通処理として実装。
 - `Sources/MonitorKit/Core`：値状態、差分、履歴、設定、取得actor、独立したログ保存actor。
@@ -31,7 +32,7 @@ Swift 5 language mode（Xcode 26.6 / Swift 6.3.3で検証）、macOS 14+ arm64�
 - `Tests/MonitorKitTests`：純粋ロジック・UserDefaultsのテスト。
 - `tools` / `scripts/load_probe.py`：任意実行の短時間負荷試験。アプリには含まない。
 
-Dockから開く一覧ウィンドウとメニュー一覧は同じToolLauncherを使用する。AppDelegateが一覧とモニターのwindowを保持・再利用し、閉じても本体は終了しない。通常ウィンドウではViewを可変領域へ配置し、一覧はadaptive grid、モニターは100％表示で文字・余白・部品の寸法を個別に指定する。位置・サイズはNSWindowのframe autosaveで保存する。ツール一覧と数値メニューは同じMonitorStoreを参照し、監視タスクを複製しない。追加ツールはCatalogへ登録し専用UI・処理を実装する。プラグインロードや未実装ツールのダミー起動は行わない。新10ツールはToolWindowsが独立NSWindowを管理し重複起動しない。CSVの未保存close/終了は確認、音声処理は明示操作で開始。録音tapはロックで保護した最大10秒のメモリだけを触り、UIは0.1秒周期で読み出す。
+Dockとメニューバーは同じToolLauncherウィンドウを開く。一覧のアイコンは同梱helperのToolIcon.icnsを共有する。AppDelegateが一覧とモニターのwindowを保持・再利用し、閉じても本体は終了しない。通常ウィンドウではViewを可変領域へ配置し、一覧はadaptive grid、モニターは100％表示で文字・余白・部品の寸法を個別に指定する。位置・サイズはNSWindowのframe autosaveで保存する。本体の数値メニューと設定は同じMonitorStoreを参照する。独立モニターは専用MonitorStoreで計測し、ログ／ログイン管理は本体が担当する。追加ツールはCatalogへ登録し専用UI・処理を実装する。プラグインロードや未実装ツールのダミー起動は行わない。新10ツールはToolWindowsが独立NSWindowを管理し重複起動しない。CSVの未保存close/終了は確認、音声処理は明示操作で開始。録音tapはロックで保護した最大10秒のメモリだけを触り、UIは0.1秒周期で読み出す。
 
 テキスト系ツールは専用TextProcessor actorで直列変換し、入力待ち・キャンセル・結果確認をMainActorが管理する。CSVの表示表CSVGridはクリップボード整形と共有。表の選択だけでセル編集のフォーカスを解除しない。行ツールは3操作で入力を共有、ClipboardWorkspaceViewは表/リストの独立状態を保持する。検索置換はICU進捗で中断と入力/結果/一致数上限を設ける。
 

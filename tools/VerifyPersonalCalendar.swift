@@ -48,7 +48,7 @@ import Carbon
               holidaysModel.holidays["2027-01-01"] != nil else { throw ToolFailure.message("祝日読込失敗") }
         for theme in VisualTheme.allCases {
             for countdown in [false, true] {
-                let size = NSSize(width: countdown ? 980 : 1080, height: countdown ? 700 : 900)
+                let size = NSSize(width: countdown ? 300 : 1080, height: countdown ? (theme == .windows98 ? 310 : 280) : 900)
                 let root = ThemeRoot(override: theme, windowTitle: countdown ? "カウントダウン" : "マイカレンダー") {
                     if countdown { PersonalCountdownView(model: model) } else { PersonalCalendarView(holidays: holidaysModel, shortcut: shortcut) }
                 }

@@ -20,6 +20,7 @@ ToolIDに対応する元PNG・生成指示・ICNSを保存し、helperへ組み�
 
 scripts/embed_tool_apps.pyが各helperのResources/ToolIcon.icnsへ対応する素材をコピーし、Info.plistのCFBundleIconFileへ設定する。
 以前のビルドに残る共通MyToolBox.icnsはhelperから除去する。
+アプリ内のToolLauncherも同梱helperのToolIcon.icnsを読み込み、全テーマで専用アイコンを表示する。素材が取得できない場合だけ従来のシンボルを表示する。
 通常のFull検証は全helperのアイコン設定・存在・元ICNSとのバイト一致とdeep署名を確認する。
 検証器の負例はアイコン欠落・誤画像を拒否する。
 

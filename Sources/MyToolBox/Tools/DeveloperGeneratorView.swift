@@ -31,32 +31,75 @@ private actor GeneratorWorker {
 
 struct HashGeneratorView: View {
     @ObservedObject var model: GeneratorModel
-    @State private var input = ""
-    @State private var algorithm = TextHash.Algorithm.sha256
-    @State private var base64 = false
+    @State private var input: String
+    @State private var algorithm: TextHash.Algorithm
+    @State private var base64: Bool
+    @State private var showsSettings = false
+    init(model: GeneratorModel, input: String = "", algorithm: TextHash.Algorithm = .sha256, base64: Bool = false) {
+        self.model = model; _input = State(initialValue: input)
+        _algorithm = State(initialValue: algorithm); _base64 = State(initialValue: base64)
+    }
     var body: some View {
-        ToolPage("ハッシュ生成", subtitle: "テキストのUTF-8バイト列からハッシュ値を生成。", symbol: "number", tint: .purple) {
-            VStack(spacing: 16) {
-                HStack {
-                    Picker("アルゴリズム", selection: $algorithm) { ForEach(TextHash.Algorithm.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                    Picker("出力形式", selection: $base64) { Text("HEX").tag(false); Text("Base64").tag(true) }
+        VStack(spacing: 6) {
+            HStack {
+                Text("ハッシュ生成").font(.headline)
+                Spacer()
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("ハッシュ生成の設定")
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ThemeMenu()
+                            Text("入力は最大1MiB。UTF-8の改行・空白もそのまま計算します。空文字にも対応。SHA-1は既存値との照合用です。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 260)
+                    }
+            }
+            HStack(spacing: 8) {
+                Picker("アルゴリズム", selection: $algorithm) {
+                    ForEach(TextHash.Algorithm.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }.labelsHidden()
+                Picker("出力形式", selection: $base64) { Text("HEX").tag(false); Text("Base64").tag(true) }
+                    .labelsHidden()
+            }
+            TextEditor(text: $input).font(.system(.body, design: .monospaced))
+                .frame(minHeight: 55, maxHeight: .infinity).accessibilityLabel("入力テキスト")
+                .overlay(alignment: .topLeading) {
+                    if input.isEmpty {
+                        Text("入力テキスト").font(.caption).foregroundStyle(.secondary)
+                            .padding(6).allowsHitTesting(false).accessibilityHidden(true)
+                    }
                 }
-                TextPane(title: "入力テキスト", symbol: "text.alignleft", text: $input, tint: .purple)
-                Text("\(input.count)文字 · \(input.utf8.count) UTF-8バイト").font(.caption)
-                HStack {
-                    Button("貼り付け") { input = NSPasteboard.general.string(forType: .string) ?? "" }
-                    Button("クリア") { input = ""; model.clear() }
-                    Spacer()
-                    Button("ハッシュを生成") {
-                        let text = input, selected = algorithm, encoded = base64
-                        model.generate { try TextHash.generate(text, algorithm: selected, base64: encoded) }
-                    }.disabled(model.busy)
-                }
-                TextPane(title: "生成結果", symbol: "number", text: $model.output, editable: false, tint: .purple)
-                GeneratorActions(model: model)
-                ToolFootnote(text: "入力は最大1MiB。改行や空白もそのまま計算します。SHA-1は既存値との照合用です。")
-            }.padding(24)
-        }.frame(minWidth: 850, minHeight: 700)
+            HStack(spacing: 6) {
+                Button { input = NSPasteboard.general.string(forType: .string) ?? "" } label: {
+                    Image(systemName: "doc.on.clipboard").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("貼り付け")
+                Button { input = ""; model.clear() } label: {
+                    Image(systemName: "trash").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("クリア")
+                Spacer(minLength: 0)
+                Button {
+                    let text = input, selected = algorithm, encoded = base64
+                    model.generate { try TextHash.generate(text, algorithm: selected, base64: encoded) }
+                } label: { Text(model.busy ? "生成中" : "生成").frame(minHeight: 28) }
+                    .buttonStyle(.borderedProminent).disabled(model.busy)
+                Button { model.copy() } label: { Text("コピー").frame(minHeight: 28) }
+                    .disabled(model.output.isEmpty || model.busy)
+            }
+            ScrollView {
+                Text(model.output.isEmpty ? "生成結果" : model.output)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(model.output.isEmpty ? Color.secondary : Color.primary)
+                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true).padding(8)
+            }.frame(minHeight: 60, maxHeight: .infinity)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+                .accessibilityLabel("生成結果")
+            Text(model.status.isEmpty ? "入力 \(input.count)文字 · \(input.utf8.count)バイト" : model.status)
+                .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: 300, idealWidth: 320, minHeight: 340, idealHeight: 360)
             .onChange(of: input) { _, _ in model.clear() }
             .onChange(of: algorithm) { _, _ in model.clear() }
             .onChange(of: base64) { _, _ in model.clear() }
@@ -83,38 +126,79 @@ struct TestDataGeneratorView: View {
     private var settingsKey: String {
         [mode, kind.rawValue, length, count, separator, String(sentences), String(sentenceLength), language, String(uuidCount), String(columnCount), String(rowCount)] .joined(separator: "|") + columns.map { $0.name + $0.type.rawValue }.joined(separator: "|")
     }
+    @State private var showsSettings = false
+    private var settingsSummary: String {
+        switch mode {
+        case "文章": return "\(sentences)文章"
+        case "UUID": return "UUID v4 · \(uuidCount)個"
+        case "CSV": return "\(columnCount)列 × \(rowCount)行"
+        default: return "\(kind.rawValue) · \(length)文字 × \(count)件"
+        }
+    }
     var body: some View {
-        ToolPage("テストデータ生成", subtitle: "ダミー文章・文字列・CSV・UUIDをまとめて生成。", symbol: "wand.and.stars", tint: .indigo) {
-            VStack(spacing: 16) {
-                ThemePicker("モード", selection: $mode, options: ["文章", "文字列", "CSV", "UUID"].map { ($0, $0) }, tabs: true)
-                ScrollView {
-                    ToolCard { settings }
-                }.frame(maxHeight: mode == "CSV" ? 310 : 150)
-                HStack {
-                    Button("生成・再生成") { generate() }.disabled(model.busy)
-                    Button("クリア") { model.clear() }
-                    if model.busy { ProgressView().controlSize(.small) }
-                    Spacer()
-                }
+        VStack(spacing: 8) {
+            HStack {
+                Text("テストデータ生成").font(.headline)
+                Spacer()
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("生成条件の設定")
+                    .popover(isPresented: $showsSettings) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 12) {
+                                settings
+                                ThemeMenu()
+                                Text(mode == "文字列" ? "各項目を指定文字数に切り詰め・連結します。メール・URL・IP風は形式確認用です。完全なUUID v4はUUIDモードで生成できます。" : "生成データは画面内だけで保持。メール・URLはexample.com、IPは文書用アドレスです。")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }.padding(12)
+                        }.frame(width: 340, height: mode == "CSV" ? 400 : 250)
+                    }
+            }
+            Picker("モード", selection: $mode) {
+                ForEach(["文章", "文字列", "CSV", "UUID"], id: \.self) { Text($0).tag($0) }
+            }.pickerStyle(.segmented).labelsHidden()
+            HStack {
+                Text(settingsSummary).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("条件を変更") { showsSettings = true }
+            }
+            ScrollView {
                 if mode == "UUID", !model.output.isEmpty {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(Array(model.output.components(separatedBy: "\n").enumerated()), id: \.offset) { entry in
-                                HStack {
-                                    Text(entry.element).font(.system(.body, design: .monospaced)).textSelection(.enabled)
-                                    Spacer()
-                                    Button("コピー") { model.copy(entry.element) }.accessibilityLabel("UUID \(entry.offset + 1)をコピー")
-                                }
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(Array(model.output.components(separatedBy: "\n").enumerated()), id: \.offset) { entry in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text(entry.element).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                                Button { model.copy(entry.element) } label: {
+                                    Image(systemName: "doc.on.doc").frame(width: 28, height: 28).contentShape(Rectangle())
+                                }.accessibilityLabel("UUID \(entry.offset + 1)をコピー")
                             }
                         }
-                    }
+                    }.padding(8)
                 } else {
-                    TextPane(title: "生成結果", symbol: "text.alignleft", text: $model.output, editable: false, tint: .indigo)
+                    Text(model.output.isEmpty ? "生成結果" : model.output)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(model.output.isEmpty ? Color.secondary : Color.primary)
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(8)
                 }
-                GeneratorActions(model: model)
-                ToolFootnote(text: mode == "文字列" ? "各項目を指定文字数に切り詰め・連結します。メール・URL・IP風は形式確認用です。完全なUUID v4はUUIDモードで生成できます。" : "生成データはこの画面内のみ保持。メール・URLはexample.com、IPは文書用アドレスを使用します。")
-            }.padding(24)
-        }.frame(minWidth: 920, minHeight: 760)
+            }.frame(maxWidth: .infinity, minHeight: 60, maxHeight: .infinity)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+                .accessibilityLabel("生成結果")
+            Text(model.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Button { model.clear() } label: {
+                    Image(systemName: "trash").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("生成結果をクリア")
+                Spacer(minLength: 0)
+                Button { generate() } label: { Text(model.busy ? "生成中" : "生成").frame(minWidth: 36, minHeight: 28) }
+                    .buttonStyle(.borderedProminent).disabled(model.busy)
+                Button { model.copy() } label: { Text("コピー").frame(minHeight: 28) }
+                    .disabled(model.output.isEmpty || model.busy)
+            }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: 320, idealWidth: 340, minHeight: 300, idealHeight: 340)
             .onChange(of: settingsKey) { _, _ in model.clear() }
     }
     @ViewBuilder private var settings: some View {
@@ -129,9 +213,11 @@ struct TestDataGeneratorView: View {
                 Picker("種類", selection: $kind) { ForEach(TestDataGenerator.Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
                 HStack {
                     Text("1件の文字数"); TextField("1〜10000", text: $length).accessibilityLabel("1件の文字数")
-                    Text("件数"); TextField("1〜1000", text: $count).accessibilityLabel("件数")
-                    Picker("区切り", selection: $separator) { Text("改行").tag("\n"); Text("カンマ").tag(","); Text("空白").tag(" "); Text("タブ").tag("\t") }
                 }
+                HStack {
+                    Text("件数"); TextField("1〜1000", text: $count).accessibilityLabel("件数")
+                }
+                    Picker("区切り", selection: $separator) { Text("改行").tag("\n"); Text("カンマ").tag(","); Text("空白").tag(" "); Text("タブ").tag("\t") }
             }
         } else if mode == "UUID" {
             Stepper("UUID v4: \(uuidCount)個", value: $uuidCount, in: 1...100)
@@ -142,7 +228,7 @@ struct TestDataGeneratorView: View {
                     HStack {
                         Text("\(i + 1)").frame(width: 25)
                         TextField("列名", text: $columns[i].name).accessibilityLabel("列\(i + 1)の名前")
-                        Picker("型", selection: $columns[i].type) { ForEach(TestDataGenerator.ColumnType.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 240).accessibilityLabel("列\(i + 1)の型")
+                        Picker("型", selection: $columns[i].type) { ForEach(TestDataGenerator.ColumnType.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 125).accessibilityLabel("列\(i + 1)の型")
                     }
                 }
             }

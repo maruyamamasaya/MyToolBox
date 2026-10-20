@@ -13,7 +13,9 @@ import AppKit
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
         for theme in VisualTheme.allCases {
             let root = ThemeRoot(override: theme) {
-                ToolLauncher(openTool: { _ in }, openMonitorSettings: {}, resizable: true)
+                ToolLauncher(openTool: { _ in }, openMonitorSettings: {}, resizable: true, toolIcon: { tool in
+                    NSImage(contentsOfFile: "Resources/ToolIcons/\(tool.rawValue).icns")
+                })
             }.defaultAppStorage(defaults)
             let host = NSHostingView(rootView: root)
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 480),

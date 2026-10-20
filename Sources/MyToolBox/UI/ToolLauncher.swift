@@ -18,6 +18,12 @@ struct ToolLauncher: View {
     var openMonitorSettings: () -> Void
     var openWindow: (() -> Void)? = nil
     var resizable = false
+    var toolIcon: (ToolID) -> NSImage? = { bundledToolIcons[$0] }
+    private static let bundledToolIcons: [ToolID: NSImage] = Dictionary(uniqueKeysWithValues:
+        ToolID.allCases.compactMap { tool in
+            let url = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/\(tool.rawValue).app/Contents/Resources/ToolIcon.icns")
+            return NSImage(contentsOf: url).map { (tool, $0) }
+        })
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
@@ -126,7 +132,10 @@ struct ToolLauncher: View {
                         Button { openTool(tool) } label: {
                             VStack(spacing: 8) {
                                 Group {
-                                    if theme.classic { ClassicToolIcon(symbol: tool.symbol).frame(width: 32, height: 32).frame(width: 44, height: 44) }
+                                    if let icon = toolIcon(tool) {
+                                        Image(nsImage: icon).resizable().scaledToFit().frame(width: 44, height: 44)
+                                    }
+                                    else if theme.classic { ClassicToolIcon(symbol: tool.symbol).frame(width: 32, height: 32).frame(width: 44, height: 44) }
                                     else {
                                         ZStack {
                                             RoundedRectangle(cornerRadius: 10).fill(color(tool).opacity(0.14))

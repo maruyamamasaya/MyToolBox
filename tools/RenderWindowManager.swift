@@ -87,10 +87,22 @@ import Carbon
         try check(!eligible("local.MyToolBox") && !eligible("local.MyToolBox.tool.localMemo") && !eligible("local.MyToolBox.tool.windowManager"), "parent and all toolbox helpers cannot replace external target")
         try check(!eligible("example.external.app", pid: 1) && !eligible("example.background", policy: .accessory), "self and background apps are excluded")
         var trustReads = 0
-        let denied = WindowManagerModel(defaults: defaults, registration: registration, trustReader: { trustReads += 1; return false }, trackApplications: false)
+        var permissionRequests = 0
+        var permissionGranted = false
+        let denied = WindowManagerModel(defaults: defaults, registration: registration, trustReader: { trustReads += 1; return permissionGranted }, trustRequester: { permissionRequests += 1; return permissionGranted }, trackApplications: false)
         defer { denied.stop() }
         denied.apply(.left)
         try check(!denied.trusted && denied.targetName == "未選択" && trustReads == 2 && denied.status.contains("独立版「ウィンドウマネージャー」"), "permission-denied path identifies helper without requesting AX access or writing windows")
+        try check(permissionRequests == 0, "startup and placement never prompt for permission")
+        denied.requestPermission()
+        try check(permissionRequests == 1 && !denied.trusted && denied.status.contains("＋で追加"), "explicit permission request explains manual helper registration")
+        permissionGranted = true
+        denied.refresh()
+        try check(denied.trusted && permissionRequests == 1, "recheck reflects grant without another prompt")
+        denied.requestPermission()
+        try check(denied.trusted && permissionRequests == 2, "request result reflects existing grant")
+        permissionGranted = false
+        denied.refresh()
         for theme in VisualTheme.allCases {
             let host = NSHostingView(rootView: ThemeRoot(override: theme, windowTitle: "ウィンドウマネージャー") { WindowManagerView(model: denied) }.defaultAppStorage(defaults))
             let size = NSSize(width: 720, height: 690)
