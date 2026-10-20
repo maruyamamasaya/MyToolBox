@@ -47,48 +47,85 @@ extension TextProcessor {
     func stop() { task?.cancel() }
 }
 struct LineToolsView: View {
-    @Environment(\.appTheme) private var theme
     @ObservedObject var model: LineToolModel
-    private let tint = Color(red: 0.77, green: 0.48, blue: 0.09)
+    @State private var showsSettings = false
     var body: some View {
-        ToolPage("行ツール", subtitle: "並べる、絞る、重なりを見つける。", symbol: "arrow.up.arrow.down", tint: tint) {
-            VStack(spacing: 16) {
-                ThemePicker("操作", selection: $model.mode, options: LineToolModel.Mode.allCases.map { ($0, $0.rawValue) }, tabs: true)
-                ToolCard { settings }
-                HStack(alignment: .top, spacing: 16) {
-                    TextPane(title: "入力テキスト", symbol: "text.alignleft", text: $model.input, tint: tint)
-                    if model.mode == .duplicates {
-                        VStack(alignment: .leading, spacing: 12) {
-                            ToolSectionLabel(title: "重複している行", symbol: "doc.on.doc")
-                            if model.busy { ProgressView() }
-                            else if model.groups.isEmpty { ContentUnavailableView("重複なし", systemImage: "checkmark.circle", description: Text(model.input.isEmpty ? "確認したいテキストを入力してください" : "現在の条件では重複がありません")) }
-                            else {
-                                ScrollView {
-                                    LazyVStack(spacing: 10) {
-                                        ForEach(model.groups) { group in
-                                            VStack(alignment: .leading, spacing: 8) {
-                                                HStack(alignment: .top) { Text(group.value.isEmpty ? "（空行）" : group.value).font(theme.font( 12, design: .monospaced)).textSelection(.enabled); Spacer(); Text("\(group.lineNumbers.count) 回").font(theme.font(11, weight: .bold)).foregroundStyle(theme.classic ? theme.accent : tint) }
-                                                Text("元の行：" + group.lineNumbers.map(String.init).joined(separator: ", ")).font(theme.font(11)).foregroundStyle(.secondary).textSelection(.enabled)
-                                            }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(tint.opacity(0.06), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 10))
-                                        }
-                                    }
+        VStack(spacing: 6) {
+            HStack {
+                Text("行ツール").font(.headline)
+                Spacer()
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("行の処理条件")
+                    .popover(isPresented: $showsSettings) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 12) {
+                                settings
+                                ThemeMenu()
+                                Text("3操作で入力を共有します。最大1MiB・20,000行。抽出の行番号と重複位置は元の入力が基準です。入力・条件の変更で自動処理します。")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }.padding(12)
+                        }.frame(width: 320, height: model.mode == .filter ? 420 : 300)
+                    }
+            }
+            Picker("操作", selection: $model.mode) {
+                ForEach(LineToolModel.Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented).labelsHidden()
+            TextEditor(text: $model.input).font(.system(.body, design: .monospaced))
+                .frame(minHeight: 55, maxHeight: .infinity).accessibilityLabel("入力テキスト")
+            ScrollView {
+                if model.mode == .duplicates && !model.busy {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        if model.groups.isEmpty {
+                            Text(model.input.isEmpty ? "確認したいテキストを入力してください" : "現在の条件では重複がありません")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        ForEach(model.groups) { group in
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(alignment: .top) {
+                                    Text(group.value.isEmpty ? "（空行）" : group.value)
+                                        .font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Spacer(minLength: 0)
+                                    Text("\(group.lineNumbers.count)回").font(.caption).foregroundStyle(.secondary)
                                 }
+                                Text("元の行：" + group.lineNumbers.map(String.init).joined(separator: ", "))
+                                    .font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
+                                Divider()
                             }
-                        }.padding(14).frame(maxWidth: .infinity, minHeight: 300, maxHeight: .infinity).background(theme.surfaceHigh.opacity(0.5), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 14))
-                    } else { TextPane(title: "処理結果", symbol: "text.badge.checkmark", text: $model.output, editable: false, tint: tint) }
-                }.frame(maxHeight: .infinity)
-                HStack(spacing: 12) {
-                    Button { model.input = NSPasteboard.general.string(forType: .string) ?? "" } label: { Label("貼り付け", systemImage: "doc.on.clipboard") }
-                    Button("クリア") { model.input = "" }.disabled(model.input.isEmpty)
-                    Button("結果を入力へ") { model.input = model.output }.disabled(model.output.isEmpty || model.busy)
-                    if model.busy { ProgressView().controlSize(.small) }
-                    Text(model.status.isEmpty ? model.summary : model.status).font(theme.font(11)).foregroundStyle(.secondary)
-                    Spacer()
-                    Button { model.copy() } label: { Label(model.mode == .duplicates ? "重複行をコピー" : "結果をコピー", systemImage: "doc.on.doc") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.output.isEmpty || model.busy)
+                        }
+                    }.padding(8)
+                } else {
+                    Text(model.busy ? "処理中…" : model.output.isEmpty ? "処理結果" : model.output)
+                        .font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(8)
                 }
-                ToolFootnote(text: "3つの操作で入力を共有します。元の行は変更しません。最大1MiB・20,000行。抽出の行番号と重複位置は元の入力を基準にします。")
-            }.padding(24)
-        }.frame(minWidth: 1020, minHeight: 780)
+            }.frame(maxWidth: .infinity, minHeight: 60, maxHeight: .infinity)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+                .accessibilityLabel("処理結果")
+            Text(model.busy ? "処理中…" : model.status.isEmpty ? model.summary : model.status)
+                .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Button { model.input = NSPasteboard.general.string(forType: .string) ?? "" } label: {
+                    Image(systemName: "doc.on.clipboard").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("貼り付け")
+                Button { model.input = "" } label: {
+                    Image(systemName: "trash").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("入力をクリア").disabled(model.input.isEmpty)
+                Button { model.input = model.output } label: {
+                    Image(systemName: "arrow.up").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("結果を入力へ").disabled(model.output.isEmpty || model.busy)
+                Spacer(minLength: 0)
+                Button { model.update() } label: { Text("実行").frame(minHeight: 28) }
+                    .buttonStyle(.borderedProminent).disabled(model.busy)
+                Button { model.copy() } label: { Text("コピー").frame(minHeight: 28) }
+                    .accessibilityLabel(model.mode == .duplicates ? "重複行をコピー" : "結果をコピー")
+                    .disabled(model.output.isEmpty || model.busy)
+            }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: 340, idealWidth: 360, minHeight: 360, idealHeight: 400)
         .onChange(of: model.input) { _, _ in model.sort.originalOrder = false; model.update() }.onChange(of: model.mode) { _, _ in model.update() }
         .onChange(of: model.sort) { old, new in
             if old.mode != new.mode || old.descending != new.descending || old.emptyLast != new.emptyLast || old.removeDuplicates != new.removeDuplicates { model.sort.originalOrder = false }
@@ -98,35 +135,51 @@ struct LineToolsView: View {
     @ViewBuilder private var settings: some View {
         switch model.mode {
         case .sort:
-            HStack(spacing: 18) {
-                ThemePicker("並び順", selection: $model.sort.mode, options: LineTools.SortMode.allCases.map { ($0, $0.rawValue) }).frame(width: 180)
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("並び順", selection: $model.sort.mode) {
+                    ForEach(LineTools.SortMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
                 Toggle("降順", isOn: $model.sort.descending)
                 Toggle("空行を末尾へ", isOn: $model.sort.emptyLast)
                 Toggle("重複行を削除", isOn: $model.sort.removeDuplicates)
-                Spacer()
                 Button("元の順番") { model.sort.originalOrder = true }.disabled(model.input.isEmpty)
                 if model.sort.originalOrder { Button("並べ替えを再開") { model.sort.originalOrder = false } }
-            }.toggleStyle(ThemeToggleStyle())
+            }
         case .filter:
-            VStack(spacing: 12) {
-                HStack { ThemePicker("結合", selection: $model.filter.any, options: [(false, "AND（すべて一致）"), (true, "OR（いずれか一致）")]).frame(width: 245); Toggle("大小文字を無視", isOn: $model.filter.ignoreCase); Toggle("空行を除外", isOn: $model.filter.ignoreEmpty); Toggle("元の行番号", isOn: $model.filter.showNumbers); Spacer(); Button { model.filter.conditions.append(.init()) } label: { Image(systemName: "plus") }.disabled(model.filter.conditions.count >= 100).help("抽出条件を追加") }
-                ScrollView {
-                    VStack(spacing: 8) {
-                        ForEach($model.filter.conditions) { $condition in
-                            HStack {
-                                ThemePicker("条件", selection: $condition.type, options: LineTools.ConditionType.allCases.map { ($0, $0.rawValue) }).labelsHidden().frame(width: 150)
-                                TextField("検索文字列", text: $condition.value).textFieldStyle(ThemeTextFieldStyle())
-                                Button { model.filter.conditions.removeAll { $0.id == condition.id } } label: { Image(systemName: "minus.circle") }.disabled(model.filter.conditions.count == 1).accessibilityLabel("この条件を削除")
-                            }
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("結合", selection: $model.filter.any) {
+                    Text("AND（すべて一致）").tag(false); Text("OR（いずれか一致）").tag(true)
+                }
+                Toggle("大小文字を無視", isOn: $model.filter.ignoreCase)
+                Toggle("空行を除外", isOn: $model.filter.ignoreEmpty)
+                Toggle("元の行番号", isOn: $model.filter.showNumbers)
+                Button("条件を追加", systemImage: "plus") { model.filter.conditions.append(.init()) }
+                    .disabled(model.filter.conditions.count >= 100)
+                ForEach($model.filter.conditions) { $condition in
+                    VStack(spacing: 6) {
+                        HStack {
+                            Picker("条件", selection: $condition.type) {
+                                ForEach(LineTools.ConditionType.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                            }.labelsHidden()
+                            Button { model.filter.conditions.removeAll { $0.id == condition.id } } label: {
+                                Image(systemName: "minus.circle").frame(width: 28, height: 28)
+                            }.disabled(model.filter.conditions.count == 1).accessibilityLabel("この条件を削除")
                         }
+                        TextField("検索文字列", text: $condition.value).textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("検索文字列")
                     }
-                }.frame(height: min(125, CGFloat(model.filter.conditions.count) * 32))
-            }.toggleStyle(ThemeToggleStyle())
+                }
+            }
         case .duplicates:
-            HStack(spacing: 24) { Toggle("空行を除外", isOn: $model.duplicates.ignoreEmpty); Toggle("前後の空白を無視", isOn: $model.duplicates.trim); Toggle("大文字・小文字を無視", isOn: $model.duplicates.ignoreCase); Spacer() }.toggleStyle(ThemeToggleStyle())
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle("空行を除外", isOn: $model.duplicates.ignoreEmpty)
+                Toggle("前後の空白を無視", isOn: $model.duplicates.trim)
+                Toggle("大文字・小文字を無視", isOn: $model.duplicates.ignoreCase)
+            }
         }
     }
 }
+
 @MainActor final class ListConverterModel: ObservableObject {
     @Published var input = ""
     @Published var output = ""

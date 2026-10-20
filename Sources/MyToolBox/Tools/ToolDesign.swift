@@ -152,3 +152,30 @@ struct ToolCalendar: View {
     }
     private func shift(_ delta: Int) { displayedMonth = calendar.date(byAdding: .month, value: delta, to: first)! }
 }
+
+/// Resizes only its own resizable window; borderless offscreen previews keep their test dimensions.
+struct ExpandableToolWindowSizing: NSViewRepresentable {
+    var expanded: Bool
+    final class Host: NSView {
+        var expanded = false
+        var applied: Bool?
+        override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); apply() }
+        func apply() {
+            guard let window, window.styleMask.contains(.resizable), applied != expanded else { return }
+            applied = expanded
+            let desired = NSSize(width: expanded ? 1100 : 360, height: expanded ? 850 : 520)
+            let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 1000)
+            let top = window.frame.maxY
+            window.setContentSize(NSSize(width: min(desired.width, visible.width - 20), height: min(desired.height, visible.height - 50)))
+            var frame = window.frame
+            frame.origin.x = min(max(visible.minX, frame.minX), max(visible.minX, visible.maxX - frame.width))
+            frame.origin.y = min(max(visible.minY, top - frame.height), max(visible.minY, visible.maxY - frame.height))
+            window.setFrame(frame, display: false)
+        }
+    }
+    func makeNSView(context: Context) -> Host { let host = Host(); host.expanded = expanded; return host }
+    func updateNSView(_ view: Host, context: Context) {
+        view.expanded = expanded
+        DispatchQueue.main.async { view.apply() }
+    }
+}

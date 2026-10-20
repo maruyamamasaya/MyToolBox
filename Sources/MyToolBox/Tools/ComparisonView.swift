@@ -44,69 +44,102 @@ private actor ComparisonWorker {
 struct ComparisonView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var model: ComparisonModel
-    private let tint = Color(red: 0.23, green: 0.43, blue: 0.94)
+    @State private var expanded: Bool
+    @State private var showsSettings = false
+    init(model: ComparisonModel, initiallyExpanded: Bool = false) {
+        self.model = model; _expanded = State(initialValue: initiallyExpanded)
+    }
     var body: some View {
-        ToolPage("比較ツール", subtitle: "文章の変更と、リストの違いをひと目で。", symbol: "rectangle.split.2x1", tint: tint) {
-            ScrollView {
-                VStack(spacing: 18) {
-                    ThemePicker("比較モード", selection: $model.mode, options: ComparisonModel.Mode.allCases.map { ($0, $0.rawValue) }, tabs: true).frame(width: 360)
-                    HStack(spacing: 16) {
-                        TextPane(title: "左 / A", symbol: "a.square", text: $model.left, tint: .orange)
-                        TextPane(title: "右 / B", symbol: "b.square", text: $model.right, tint: .teal)
-                    }.frame(height: 220)
-                    HStack(spacing: 12) {
-                        if model.mode == .diff { Button { model.compare() } label: { Label("比較する", systemImage: "arrow.left.arrow.right") }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.busy) }
-                        Button { model.swap() } label: { Label("左右を入れ替え", systemImage: "arrow.triangle.swap") }
-                        Button("クリア") { model.clear() }.disabled(model.left.isEmpty && model.right.isEmpty)
-                        if model.busy { ProgressView().controlSize(.small) }
-                        Text(model.status).font(theme.font(11)).foregroundStyle(.secondary).textSelection(.enabled)
-                        Spacer()
+        VStack(spacing: 8) {
+            HStack {
+                Text("比較ツール").font(.headline)
+                Spacer(minLength: 0)
+                Button(expanded ? "小さく戻す" : "拡大") { expanded.toggle() }
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("比較の設定")
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if model.mode == .diff { Toggle("行を折り返す", isOn: $model.wrap) }
+                            else {
+                                Toggle("前後の空白を無視", isOn: $model.options.trim)
+                                Toggle("大文字・小文字を無視", isOn: $model.options.ignoreCase)
+                                Toggle("空行を除外", isOn: $model.options.ignoreEmpty)
+                            }
+                            ThemeMenu()
+                            Text(model.mode == .diff ? "改行を統一して行単位で比較。空行・末尾改行を区別。左右各256KiB・1,000行。変更行の対応は近さによる推定です。" : "1行1項目で重複を集約。共通とAのみはA、BのみはBの最初の表記・順序を保持。左右各1MiB・20,000行。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 280)
                     }
-                    if model.mode == .diff { diffResults }
-                    else { listResults }
-                    ToolFootnote(text: model.mode == .diff ? "改行コードを統一して行単位で比較。空行と末尾改行は区別します。左右各256KiB・1,000行まで、省略はしません。変更行の対応付けは近さによる推定です。" : "1行を1項目として重複をまとめます。共通とAのみはA、BのみはBの最初の表記・出現順を保ちます。左右各1MiB・20,000行まで。")
-                }.padding(24)
             }
-        }.frame(minWidth: 1100, minHeight: 900)
-        .onChange(of: model.left) { _, _ in model.changed() }.onChange(of: model.right) { _, _ in model.changed() }
-        .onChange(of: model.mode) { _, _ in model.modeChanged() }.onChange(of: model.options) { _, _ in if model.mode == .lists { model.compare() } }
-        .onDisappear { model.stop() }
+            Picker("比較モード", selection: $model.mode) {
+                ForEach(ComparisonModel.Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented).labelsHidden()
+            HStack(spacing: 8) {
+                input("A", text: $model.left)
+                input("B", text: $model.right)
+            }.frame(height: expanded ? 200 : 150)
+            HStack(spacing: 6) {
+                Button { model.swap() } label: {
+                    Image(systemName: "arrow.left.arrow.right").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("AとBを入れ替え")
+                Button { model.clear() } label: {
+                    Image(systemName: "trash").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("入力をクリア").disabled(model.left.isEmpty && model.right.isEmpty)
+                Text(model.busy ? "比較中…" : model.status).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                Spacer(minLength: 0)
+                Button { model.compare() } label: { Text("比較").frame(minWidth: 28, minHeight: 28) }
+                    .buttonStyle(.borderedProminent).disabled(model.busy)
+            }
+            if model.mode == .diff { diffResults } else { listResults }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: expanded ? 800 : 340, idealWidth: expanded ? 1100 : 360,
+                   minHeight: expanded ? 600 : 480, idealHeight: expanded ? 850 : 520)
+            .background(ExpandableToolWindowSizing(expanded: expanded))
+            .onChange(of: model.left) { _, _ in model.changed() }.onChange(of: model.right) { _, _ in model.changed() }
+            .onChange(of: model.mode) { _, _ in model.modeChanged() }
+            .onChange(of: model.options) { _, _ in if model.mode == .lists { model.compare() } }
+            .onDisappear { model.stop() }
+    }
+    private func input(_ title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title == "A" ? "A（左）" : "B（右）").font(.caption.weight(.semibold)).foregroundStyle(title == "A" ? Color.orange : Color.teal)
+            ToolTextEditor(text: text, label: title + "の入力").frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+        }
     }
     @ViewBuilder private var diffResults: some View {
         if let result = model.diff {
-            HStack(spacing: 12) {
-                badge("同一", result.same, .secondary)
-                badge("変更", result.changed, .orange)
-                badge("削除", result.removed, .red)
-                badge("追加", result.added, .green)
-                Spacer()
-                Toggle("行を折り返す", isOn: $model.wrap).toggleStyle(ThemeToggleStyle())
-                Button { model.copy(result.plainText) } label: { Label("比較結果をコピー", systemImage: "doc.on.doc") }.disabled(result.rows.isEmpty)
+            HStack(spacing: 6) {
+                Text("同一 \(result.same) · 変更 \(result.changed) · −\(result.removed) · ＋\(result.added)")
+                    .font(.caption).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Button { model.copy(result.plainText) } label: {
+                    Image(systemName: "doc.on.doc").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("比較結果をコピー").disabled(result.rows.isEmpty || model.busy)
             }
-            if result.rows.isEmpty { ContentUnavailableView("入力が空です", systemImage: "doc.text.magnifyingglass", description: Text("左右のテキストを入力してください")) }
-            else { DiffGrid(rows: result.rows, wrap: model.wrap).frame(height: 420) }
+            DiffGrid(rows: result.rows, wrap: model.wrap, compact: !expanded).frame(maxHeight: .infinity)
         } else {
-            ContentUnavailableView("左右のテキストを比較", systemImage: "rectangle.split.2x1", description: Text("テキストを貼り付けて「比較する」を押すと、追加・削除・変更を色分けします。"))
-                .frame(maxWidth: .infinity).padding(.vertical, 12)
+            Text("AとBを入力して「比較」を押してください")
+                .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
     private var listResults: some View {
-        VStack(spacing: 16) {
-            ToolCard {
-                HStack(spacing: 24) {
-                    Toggle("前後の空白を無視", isOn: $model.options.trim)
-                    Toggle("大文字・小文字を無視", isOn: $model.options.ignoreCase)
-                    Toggle("空行を除外", isOn: $model.options.ignoreEmpty)
-                    Spacer()
-                    if let result = model.lists { Text("A \(result.leftCount) 件 / B \(result.rightCount) 件").font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
-                }.toggleStyle(ThemeToggleStyle())
+        VStack(spacing: 6) {
+            if let result = model.lists {
+                Text("A \(result.leftCount)件 / B \(result.rightCount)件").font(.caption).foregroundStyle(.secondary)
             }
-            HStack(spacing: 16) {
-                listCard("共通", values: model.lists?.common ?? [], symbol: "link", color: .green)
-                listCard("A のみ", values: model.lists?.onlyLeft ?? [], symbol: "a.square", color: .orange)
-                listCard("B のみ", values: model.lists?.onlyRight ?? [], symbol: "b.square", color: .blue)
-            }.frame(height: 310)
+            if expanded {
+                HStack(spacing: 8) { listCards }.frame(maxHeight: .infinity)
+            } else {
+                ScrollView { VStack(spacing: 8) { listCards } }
+            }
         }
+    }
+    @ViewBuilder private var listCards: some View {
+        listCard("共通", values: model.lists?.common ?? [], symbol: "link", color: .green).frame(minHeight: 120)
+        listCard("Aのみ", values: model.lists?.onlyLeft ?? [], symbol: "a.square", color: .orange).frame(minHeight: 120)
+        listCard("Bのみ", values: model.lists?.onlyRight ?? [], symbol: "b.square", color: .blue).frame(minHeight: 120)
     }
     private func listCard(_ title: String, values: [String], symbol: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -128,36 +161,68 @@ private struct DiffGrid: View {
     @Environment(\.appTheme) private var theme
     let rows: [TextComparison.Row]
     let wrap: Bool
+    var compact = false
+    private var gutter: CGFloat { compact ? 20 : 32 }
+    private var inset: CGFloat { compact ? 5 : 10 }
     var body: some View {
         GeometryReader { geometry in
-            let width = wrap ? max(160, (geometry.size.width - 170) / 2) : max((geometry.size.width - 170) / 2, CGFloat(rows.map { max(($0.left ?? "").utf16.count, ($0.right ?? "").utf16.count) }.max() ?? 1) * 14 + 18)
+            let available = max(1, (geometry.size.width - 2) / 2)
+            let longest = CGFloat(rows.map { max(($0.left ?? "").utf16.count, ($0.right ?? "").utf16.count) }.max() ?? 1)
+            let column = wrap ? available : max(available, longest * 8 + gutter + inset * 2)
             ScrollView([.vertical, .horizontal]) {
                 LazyVStack(spacing: 0) {
-                    HStack(spacing: 0) { Text("左 / A").frame(width: width + 52, alignment: .leading); Text("右 / B").frame(width: width + 52, alignment: .leading); Text("状態").frame(width: 64) }.font(theme.font(11, weight: .bold)).padding(.vertical, 10).background(.primary.opacity(0.04))
-                    ForEach(rows) { row in
-                        HStack(alignment: .top, spacing: 0) {
-                            cell(row.left, number: row.leftNumber, span: row.leftSpan, width: width, color: row.kind == .same ? .clear : .red)
-                            Divider()
-                            cell(row.right, number: row.rightNumber, span: row.rightSpan, width: width, color: row.kind == .same ? .clear : .green)
-                            Text(row.kind.rawValue).font(theme.font( 10, weight: .medium)).foregroundStyle(color(row.kind)).frame(width: 64, alignment: .center).padding(.top, 12)
-                        }.background(row.id.isMultiple(of: 2) ? Color.primary.opacity(0.015) : .clear)
-                        Divider().opacity(0.35)
+                    HStack(spacing: 2) {
+                        columnHeader("A（左）", color: .orange, width: column)
+                        columnHeader("B（右）", color: .teal, width: column)
                     }
-                }.frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                    if rows.isEmpty {
+                        Text("入力が空です").font(.caption).foregroundStyle(.secondary).padding(12)
+                    }
+                    ForEach(rows) { row in
+                        VStack(spacing: 0) {
+                            HStack {
+                                Text(row.kind.rawValue).font(theme.font(10, weight: .semibold)).foregroundStyle(color(row.kind))
+                                Spacer()
+                            }.padding(.horizontal, 6).padding(.vertical, compact ? 2 : 4)
+                                .background(color(row.kind).opacity(row.kind == .same ? 0.03 : 0.1))
+                            HStack(alignment: .top, spacing: 0) {
+                                cell(row.left, number: row.leftNumber, span: row.leftSpan, column: column, color: row.kind == .same ? .clear : .red)
+                                Rectangle().fill(theme.edge.opacity(0.45)).frame(width: 2)
+                                cell(row.right, number: row.rightNumber, span: row.rightSpan, column: column, color: row.kind == .same ? .clear : .green)
+                            }.fixedSize(horizontal: false, vertical: true)
+                            Divider().opacity(0.5)
+                        }.background(row.id.isMultiple(of: 2) ? Color.primary.opacity(0.025) : .clear)
+                    }
+                }.frame(width: column * 2 + 2, alignment: .topLeading)
+                    .frame(minHeight: geometry.size.height, alignment: .topLeading)
             }
-        }.background(theme.surfaceHigh.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius: theme.classic ? 0 : 14)).overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 14).strokeBorder(.primary.opacity(0.08))).classicBevel(sunken: true)
+        }.background(theme.surfaceHigh.opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: theme.classic ? 0 : 8))
+            .overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 8).strokeBorder(theme.edge.opacity(0.25)))
+            .classicBevel(sunken: true)
+    }
+    private func columnHeader(_ title: String, color: Color, width: CGFloat) -> some View {
+        Text(title).font(theme.font(compact ? 12 : 14, weight: .bold))
+            .foregroundStyle(color).frame(width: width, alignment: .leading)
+            .padding(.vertical, compact ? 7 : 10).background(color.opacity(0.14))
     }
     private func color(_ kind: TextComparison.Kind) -> Color {
         switch kind { case .same: return .secondary; case .changed: return .orange; case .removed: return .red; case .added: return .green }
     }
-    private func cell(_ text: String?, number: Int?, span: TextComparison.Span?, width: CGFloat, color: Color) -> some View {
+    private func cell(_ text: String?, number: Int?, span: TextComparison.Span?, column: CGFloat, color: Color) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            Text(number.map(String.init) ?? "—").font(theme.font( 10, design: .monospaced)).foregroundStyle(.tertiary).frame(width: 32, alignment: .trailing).padding(.top, 12)
+            Text(number.map(String.init) ?? "—").font(theme.font(10, design: .monospaced))
+                .foregroundStyle(.secondary).frame(width: gutter, alignment: .trailing)
             Group {
                 if let text, !text.isEmpty { Text(highlighted(text, span: span, color: color)).textSelection(.enabled) }
-                else { Text(text == nil ? "—" : "空行").foregroundStyle(.tertiary) }
-            }.font(theme.font( 12, design: .monospaced)).lineLimit(wrap ? nil : 1).fixedSize(horizontal: false, vertical: true).frame(width: width, alignment: .leading).padding(.horizontal, 10).padding(.vertical, 10)
-        }.frame(maxHeight: .infinity, alignment: .top).background(text == nil ? Color.primary.opacity(0.02) : color.opacity(0.055))
+                else { Text(text == nil ? "—" : "空行").foregroundStyle(.secondary) }
+            }.font(theme.font(12, design: .monospaced)).lineLimit(wrap ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: max(1, column - gutter - inset * 2), alignment: .leading)
+                .padding(.horizontal, inset)
+        }.padding(.vertical, compact ? 6 : 10).frame(width: column, alignment: .topLeading)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(text == nil ? Color.primary.opacity(0.04) : color.opacity(0.055))
     }
     private func highlighted(_ text: String, span: TextComparison.Span?, color: Color) -> AttributedString {
         var value = AttributedString(text)

@@ -184,40 +184,83 @@ struct TextPane: View {
     }
 }
 struct SequentialTextView: View {
-    @Environment(\.appTheme) private var theme
     @ObservedObject var model: TextTransformModel
-    private let tint = Color.indigo
+    @State private var showsSettings = false
     var body: some View {
-        ToolPage("連番テキスト生成", subtitle: "行に番号を添えて、使いやすいリストへ。", symbol: "list.number", tint: tint) {
-            VStack(spacing: 16) {
-                ToolCard {
-                    VStack(alignment: .leading, spacing: 14) {
-                        ToolSectionLabel(title: "連番のルール", symbol: "slider.horizontal.3")
-                        HStack(spacing: 18) {
-                            LabeledContent("開始") { TextField("1", text: $model.start).frame(width: 80).accessibilityLabel("開始番号") }
-                            LabeledContent("増加数") { TextField("1", text: $model.increment).frame(width: 80) }
-                            ThemePicker("桁数", selection: $model.options.digits, options: (1..<9).map { ($0, String(repeating: "0", count: $0 - 1) + "1") }).frame(width: 140)
-                            ThemePicker("位置", selection: $model.options.atEnd, options: [(false, "行の先頭"), (true, "行の末尾")]).frame(width: 160)
-                        }
-                        HStack(spacing: 18) {
-                            TextField("前に付ける文字（item- など）", text: $model.options.prefix)
-                            TextField("区切り文字", text: $model.options.separator).frame(width: 130).accessibilityLabel("区切り文字")
-                            TextField("後ろに付ける文字", text: $model.options.suffix)
-                            Toggle("空行も連番対象", isOn: $model.options.numberEmptyLines).toggleStyle(ThemeToggleStyle())
-                        }.textFieldStyle(ThemeTextFieldStyle())
+        VStack(spacing: 6) {
+            HStack {
+                Text("連番テキスト生成").font(.headline)
+                Spacer()
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("連番の設定")
+                    .popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            settingField("開始番号", text: $model.start)
+                            settingField("増加数", text: $model.increment)
+                            Picker("桁数", selection: $model.options.digits) {
+                                ForEach(1..<9, id: \.self) { Text("\($0)桁").tag($0) }
+                            }
+                            Picker("位置", selection: $model.options.atEnd) {
+                                Text("行の先頭").tag(false); Text("行の末尾").tag(true)
+                            }
+                            settingField("前の文字", text: $model.options.prefix)
+                            settingField("区切り", text: $model.options.separator)
+                            settingField("後の文字", text: $model.options.suffix)
+                            Toggle("空行も連番対象", isOn: $model.options.numberEmptyLines)
+                            ThemeMenu()
+                            Text("入力すると自動生成します。開始・増加数は負数や0にも対応。空行を対象外にすると番号を消費しません。入力は最大1MiB・20,000行。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(12).frame(width: 280)
+                    }
+            }
+            TextEditor(text: $model.input).font(.system(.body, design: .monospaced))
+                .frame(minHeight: 55, maxHeight: .infinity).accessibilityLabel("元のテキスト")
+                .overlay(alignment: .topLeading) {
+                    if model.input.isEmpty {
+                        Text("元のテキスト").font(.caption).foregroundStyle(.secondary).padding(6).allowsHitTesting(false).accessibilityHidden(true)
                     }
                 }
-                HStack(spacing: 16) {
-                    TextPane(title: "入力テキスト", symbol: "text.alignleft", text: $model.input, tint: tint)
-                    TextPane(title: "生成結果", symbol: "list.number", text: $model.output, editable: false, tint: tint)
-                }
-                TextToolActions(model: model, tint: tint)
-                ToolFootnote(text: "開始番号・増加数は負の整数や0も指定できます。空行を無視する場合は番号を消費しません。入力は最大1MiB・20,000行。")
-            }.padding(24)
-        }.frame(minWidth: 940, minHeight: 710)
-        .onChange(of: model.input) { _, _ in model.update() }.onChange(of: model.start) { _, _ in model.update() }.onChange(of: model.increment) { _, _ in model.update() }.onChange(of: model.options) { _, _ in model.update() }
-        .onDisappear { model.stop() }
+            ScrollView {
+                Text(model.output.isEmpty ? (model.busy ? "処理中…" : "処理結果") : model.output)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(model.output.isEmpty ? Color.secondary : Color.primary)
+                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(8)
+            }.frame(minHeight: 60, maxHeight: .infinity)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+                .accessibilityLabel("処理結果")
+            Text(model.busy ? "処理中…" : model.status.isEmpty ? model.count : model.status)
+                .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Button { model.input = NSPasteboard.general.string(forType: .string) ?? "" } label: {
+                    Image(systemName: "doc.on.clipboard").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("貼り付け")
+                Button { model.input = "" } label: {
+                    Image(systemName: "trash").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("入力をクリア").disabled(model.input.isEmpty)
+                Spacer(minLength: 0)
+                Button { model.update() } label: { Text("生成").frame(minWidth: 28, minHeight: 28) }
+                    .buttonStyle(.borderedProminent).disabled(model.busy)
+                Button { model.copy() } label: { Text("コピー").frame(minHeight: 28) }
+                    .disabled(model.busy || model.output.isEmpty)
+            }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: 320, idealWidth: 340, minHeight: 340, idealHeight: 360)
+            .onChange(of: model.start) { _, _ in model.update() }
+            .onChange(of: model.increment) { _, _ in model.update() }
+            .onChange(of: model.options) { _, _ in model.update() }
+            .onChange(of: model.input) { _, _ in model.update() }
+            .onDisappear { model.stop() }
     }
+    private func settingField(_ title: String, text: Binding<String>) -> some View {
+        HStack {
+            Text(title).font(.caption).frame(width: 56, alignment: .leading)
+            TextField(title, text: text).textFieldStyle(.roundedBorder).accessibilityLabel(title)
+        }
+    }
+
 }
 struct TextCleanerView: View {
     @ObservedObject var model: TextTransformModel
