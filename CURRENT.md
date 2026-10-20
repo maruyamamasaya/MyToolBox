@@ -60,7 +60,7 @@ Phase 1の主要指標PoCとPhase 2初期MVPを実装。Phase 3の自動テス�
 - Dockと通常のツール一覧ウィンドウを追加。当時はメニュー一覧も維持。/Applicationsへ反映済み、通常一覧の表示確認済み。Dockから一覧を開けることをユーザーが実機確認済み（2026-10-20）。検証は[sessions記録](sessions/2026-10-20-dock-launcher.md)。
 - [モニター100％表示・部品小型化](sessions/2026-10-20-monitor-compact.md)と[可変ウィンドウ](sessions/2026-10-20-resizable-windows.md)を本番へ反映。表示・枠の拡縮・小型時のスクロール・一覧列数の追従を実機確認済み。
 ## 進行中
-[ツール小窓化の一括反映](sessions/2026-10-20-compact-tools-release.md)：このチャットの21ツールを小型化。カレンダーとクイックメモのサイズは維持。最終Full・検証器8件成功。コミット／配置の結果は記録を参照。
+[ツール小窓化の一括反映](sessions/2026-10-20-compact-tools-release.md)：このチャットの21ツールを小型化。カレンダーとクイックメモのサイズは維持。最終Full・検証器8件成功。mainへプッシュ・本番反映済み。本体再起動、メモとウィンドウ配置のPID・設定を維持。
 独立55ツールの青い専用アイコンと一覧スクロール対策を[本番反映済み](sessions/2026-10-20-04-icons-launcher-deploy.md)。初回配置の可変一覧起動クラッシュを修正し、170単体・Full・4テーマ×3サイズ描画・実画面の上下スクロール・設定維持を確認。[アイコン仕様](docs/TOOL_ICONS.md)。
 [全55ツールの独立化](sessions/2026-10-20-all-independent-tools.md)は[一括配置済み](sessions/2026-10-20-combined-deploy.md)。カレンダー・ウィンドウ配置も[最新版へ切替済み](sessions/2026-10-20-helper-latest-shortcuts.md)。設定維持・呼出し／配置／復元キーを利用者が実入力確認。
 [IME・実sleep・8時間観測](sessions/2026-10-15-54-ime-sleep-soak.md)はユーザー依頼で中止。監視・検証用アプリと定期追跡を停止。[ロードマップ](docs/ROADMAP.md)・[可視化案](docs/VISUALIZATION_ROADMAP.md)は継続。
