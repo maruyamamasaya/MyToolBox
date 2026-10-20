@@ -13,10 +13,18 @@ final class PersonalCountdownTests: XCTestCase {
     func testHourEstimateAndCompletion() throws {
         var entry = PersonalCountdown(); entry.title = "1万時間まで"; entry.kind = .hours
         entry.completedHours = 9_995; entry.hoursPerDay = 2
+        entry.date = date("2026-10-19T09:00:00+09:00")
         try entry.validate()
-        XCTAssertEqual(entry.remainingDays(now: Date()), 3)
+        let end = entry.targetDate
+        XCTAssertEqual(end, date("2026-10-21T12:00:00+09:00"))
+        XCTAssertEqual(entry.remainingDays(now: entry.date), 2)
+        XCTAssertEqual(entry.remainingDays(now: date("2026-10-20T09:00:00+09:00")), 1)
+        XCTAssertEqual(entry.targetDate, end)
+        entry.date = date("2026-10-19T23:59:00+09:00")
+        XCTAssertEqual(entry.targetDate, end)
+        XCTAssertEqual(entry.remainingDays(now: date("2026-10-22T09:00:00+09:00")), -1)
         entry.completedHours = 10_001
-        XCTAssertEqual(entry.remainingDays(now: Date()), 0)
+        XCTAssertEqual(entry.remainingDays(now: entry.date), 0)
         entry.hoursPerDay = 0; XCTAssertThrowsError(try entry.validate())
         entry.hoursPerDay = .nan; XCTAssertThrowsError(try entry.validate())
         entry.hoursPerDay = 25; XCTAssertThrowsError(try entry.validate())
@@ -27,6 +35,30 @@ final class PersonalCountdownTests: XCTestCase {
         try entry.validate()
         XCTAssertEqual(entry.targetDate?.timeIntervalSince(entry.date), 36_000_000)
         XCTAssertEqual(entry.remainingDays(now: entry.date), 416)
+    }
+    func testInlineProgressKeepsStartAsCalculationBase() throws {
+        var entry = PersonalCountdown(); entry.title = "学習"; entry.kind = .hours
+        entry.date = date("2026-10-01T15:00:00+09:00")
+        entry.targetHours = 100; entry.hoursPerDay = 2
+        let start = entry.date
+        try entry.updateCompletedHours(20)
+        XCTAssertEqual(entry.date, start)
+        XCTAssertEqual(entry.targetDate, date("2026-11-10T00:00:00+09:00"))
+        try entry.updateCompletedHours(22)
+        XCTAssertEqual(entry.date, start)
+        XCTAssertEqual(entry.targetDate, date("2026-11-09T00:00:00+09:00"))
+        let saved = entry
+        XCTAssertThrowsError(try entry.updateCompletedHours(-1))
+        XCTAssertEqual(entry, saved)
+        XCTAssertThrowsError(try entry.updateCompletedHours(.nan))
+        XCTAssertEqual(entry, saved)
+        let data = try JSONEncoder().encode(entry)
+        XCTAssertEqual(try JSONDecoder().decode(PersonalCountdown.self, from: data), entry)
+        var previous = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        previous["progressDate"] = Date().timeIntervalSinceReferenceDate
+        let decoded = try JSONDecoder().decode(PersonalCountdown.self, from: JSONSerialization.data(withJSONObject: previous))
+        XCTAssertEqual(decoded, entry)
+        XCTAssertEqual(decoded.targetDate, entry.targetDate)
     }
     func testMultipleGoalsPersistenceAndCorruption() throws {
         let suite = "PersonalCountdownTests." + UUID().uuidString

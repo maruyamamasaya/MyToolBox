@@ -5,7 +5,7 @@ import SwiftUI
     @Published var error = ""
     @Published var loadFailed = false
     private let defaults: UserDefaults
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = IndependentTools.defaults) {
         self.defaults = defaults
         do { entries = try PersonalCountdownStore.load(defaults: defaults) }
         catch { self.error = "保存した目標を読み込めません：" + error.localizedDescription; loadFailed = true }
@@ -21,6 +21,17 @@ import SwiftUI
             entries = updated; error = ""; return true
         } catch { self.error = error.localizedDescription; return false }
     }
+    func updateCompletedHours(_ id: UUID, text: String) -> Bool {
+        guard var entry = entries.first(where: { $0.id == id }), !loadFailed else { return false }
+        guard let hours = Double(text.trimmingCharacters(in: .whitespacesAndNewlines)), hours.isFinite, hours >= 0 else {
+            error = "累計時間は0以上の数値を入力してください"; return false
+        }
+        guard hours != entry.completedHours else { error = ""; return true }
+        do {
+            try entry.updateCompletedHours(hours)
+            return save(entry)
+        } catch { self.error = error.localizedDescription; return false }
+    }
     func delete(_ id: UUID) {
         do {
             let updated = entries.filter { $0.id != id }
@@ -32,36 +43,65 @@ import SwiftUI
 
 struct PersonalCalendarView: View {
     @Environment(\.appTheme) private var theme
-    @StateObject private var model: PersonalCalendarModel
-    init(model: PersonalCalendarModel? = nil) { _model = StateObject(wrappedValue: model ?? PersonalCalendarModel()) }
-    @StateObject private var holidays = CalendarWorkspaceModel()
+    @StateObject private var holidays: CalendarWorkspaceModel
+    @ObservedObject private var shortcut: ToolShortcutModel
     @State private var selected = Date()
     @State private var month = Date()
+    @State private var showsSettings = false
+    private let calendar = BusinessDays.calendar
+    init(holidays: CalendarWorkspaceModel? = nil, shortcut: ToolShortcutModel? = nil) {
+        _holidays = StateObject(wrappedValue: holidays ?? CalendarWorkspaceModel())
+        self.shortcut = shortcut ?? .calendar
+    }
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { _ in
+            VStack(spacing: 0) {
+                ExpandedCalendarView(month: $month, selected: $selected, holidays: holidays.holidays,
+                    settings: {
+                        AnyView(Button { showsSettings.toggle() } label: { Image(systemName: "gearshape") }
+                            .accessibilityLabel("ショートカット設定")
+                            .popover(isPresented: $showsSettings) { shortcutSettings.padding(16).frame(width: 300) })
+                    })
+                if let notice = holidays.holidayNotice { Text(notice).font(theme.font(10)).foregroundStyle(.secondary).padding(.bottom, 8) }
+                if !shortcut.error.isEmpty { Text(shortcut.error).font(theme.font(11)).foregroundStyle(.red).padding(.bottom, 8) }
+            }
+        }
+        .environment(\.calendar, calendar).environment(\.timeZone, calendar.timeZone)
+        .environment(\.locale, Locale(identifier: "ja_JP"))
+        .onChange(of: month) { _, value in holidays.month = calendar.date(byAdding: .month, value: 3, to: value)! }
+    }
+
+    private var shortcutSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle("ショートカットで開く", isOn: Binding(get: { shortcut.enabled }, set: { shortcut.setEnabled($0) }))
+            HStack {
+                Text("⌃⌥⌘")
+                Picker("キー", selection: Binding(get: { shortcut.key }, set: { shortcut.setKey($0) })) {
+                    ForEach(ToolShortcutModel.keys, id: \.name) { item in Text(item.name).tag(item.name) }
+                }
+            }
+            Text("MyToolBoxの起動中は、ほかのアプリからも開けます。").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+}
+
+struct PersonalCountdownView: View {
+    @Environment(\.appTheme) private var theme
+    @StateObject private var model: PersonalCalendarModel
+    init(model: PersonalCalendarModel? = nil) { _model = StateObject(wrappedValue: model ?? PersonalCalendarModel()) }
     @State private var draft: PersonalCountdown?
     @State private var deleting: PersonalCountdown?
     var body: some View {
-        ToolPage("マイカレンダー", subtitle: "日付を眺める。大切な日や目標まで、あと何日。", symbol: "calendar", tint: .mint) {
+        ToolPage("カウントダウン", subtitle: "大切な日や目標まで、あと何日。", symbol: "hourglass", tint: .mint) {
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        ToolCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Text(context.date.formatted(Date.FormatStyle(date: .complete, time: .omitted, locale: Locale(identifier: "ja_JP"), calendar: BusinessDays.calendar, timeZone: BusinessDays.calendar.timeZone))).font(theme.font(16, weight: .semibold))
-                                    Spacer()
-                                    Button("今日") { selected = context.date; month = context.date }
-                                }
-                                ToolCalendar(selection: $selected, holidays: holidays.holidays, visibleMonth: $month,
-                                             showsAdjacentDays: true, showsHolidayNames: true, showsCellBorders: true, rowHeight: 48)
-                                Text("選択日：" + BusinessDays.key(selected)).font(theme.font(12))
-                                if let name = holidays.holidays[BusinessDays.key(selected)] { Text(name).foregroundStyle(.red) }
-                                if let notice = holidays.holidayNotice { Text(notice).font(theme.font(11)).foregroundStyle(.secondary) }
-                            }
-                        }
                         HStack {
                             ToolSectionLabel(title: "カウントダウン", symbol: "hourglass")
                             Spacer()
-                            Button("目標を追加") { var entry = PersonalCountdown(); entry.date = selected; draft = entry }
+                            Button("目標を追加") { var entry = PersonalCountdown(); entry.date = Date(); draft = entry }
                                 .buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.loadFailed)
                         }
                         if !model.error.isEmpty { Text(model.error).foregroundStyle(.red).textSelection(.enabled) }
@@ -77,10 +117,9 @@ struct PersonalCalendarView: View {
                 }
             }
         }
-        .frame(minWidth: 700, minHeight: 760)
+        .frame(minWidth: 880, minHeight: 520)
         .environment(\.calendar, BusinessDays.calendar).environment(\.timeZone, BusinessDays.calendar.timeZone)
         .environment(\.locale, Locale(identifier: "ja_JP"))
-        .onChange(of: month) { _, value in holidays.month = value }
         .sheet(item: $draft) { entry in CountdownEditor(entry: entry) { model.save($0) } }
         .alert("目標を削除しますか？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
             Button("キャンセル", role: .cancel) { deleting = nil }
@@ -93,19 +132,51 @@ struct PersonalCalendarView: View {
             HStack(spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(entry.title).font(theme.font(17, weight: .semibold)).textSelection(.enabled)
-                    if let date = entry.targetDate { Text("目標日：" + BusinessDays.key(date)).font(theme.font(12)).foregroundStyle(.secondary) }
-                    else { Text("\(entry.completedHours.formatted()) / \(entry.targetHours.formatted())時間 · 1日\(entry.hoursPerDay.formatted())時間の見積もり").font(theme.font(12)).foregroundStyle(.secondary) }
+                    if entry.kind == .hours {
+                        Text("開始日：" + BusinessDays.key(entry.date)).font(theme.font(14))
+                        Text("1日あたり：\(entry.hoursPerDay.formatted())時間 · 目標：\(entry.targetHours.formatted())時間").font(theme.font(14))
+                        CountdownProgressInput(entry: entry) { model.updateCompletedHours(entry.id, text: $0) }
+                    }
+                    if let date = entry.targetDate {
+                        Text((entry.kind == .date ? "目標日：" + BusinessDays.key(date) : "終了予定日：" + BusinessDays.key(date)))
+                            .font(theme.font(14)).foregroundStyle(.secondary)
+                    }
                     HStack {
                         Button("編集") { draft = entry }
                         Button("削除") { deleting = entry }
                     }
                 }
                 Spacer()
-                Text(days < 0 ? "\(-days)日経過" : days == 0 ? (entry.kind == .hours ? "目標達成" : "当日") : "あと\(days)日")
+                Text(entry.kind == .hours && entry.completedHours >= entry.targetHours ? "目標達成" : days < 0 ? "\(-days)日経過" : days == 0 ? "当日" : "あと\(days)日")
                     .font(theme.font(26, weight: .bold, design: .rounded)).monospacedDigit()
             }
         }
     }
+}
+
+private struct CountdownProgressInput: View {
+    let entry: PersonalCountdown
+    var save: (String) -> Bool
+    @State private var text: String
+    init(entry: PersonalCountdown, save: @escaping (String) -> Bool) {
+        self.entry = entry; self.save = save
+        _text = State(initialValue: String(entry.completedHours))
+    }
+    var body: some View {
+        HStack {
+            Text("累計時間")
+            TextField("累計時間", text: $text)
+                .textFieldStyle(ThemeTextFieldStyle()).frame(width: 120)
+                .accessibilityLabel(entry.title + "の累計時間")
+                .onSubmit { commit() }
+            Text("時間")
+            Button("更新") { commit() }
+                .disabled(Double(text.trimmingCharacters(in: .whitespacesAndNewlines)) == entry.completedHours)
+        }
+        .onChange(of: entry.completedHours) { _, value in text = String(value) }
+        .help("累計の合計時間を入力し、更新またはEnterで保存します。開始日は変わりません。")
+    }
+    private func commit() { _ = save(text) }
 }
 
 private struct CountdownEditor: View {
@@ -124,13 +195,17 @@ private struct CountdownEditor: View {
             } else {
                 numberField("目標時間", value: $entry.targetHours)
                 if entry.kind == .hours {
-                    numberField("現在の累計時間", value: $entry.completedHours)
+                    DatePicker("開始日", selection: $entry.date, displayedComponents: .date)
+                    numberField("累計時間", value: $entry.completedHours)
                     numberField("1日あたりの時間", value: $entry.hoursPerDay)
-                    Text("残り時間 ÷ 1日あたりの時間を切り上げた見積もり。累計は自動加算しません。").font(.caption).foregroundStyle(.secondary)
+                    Text("開始日から残り時間で終了予定日を計算します。累計を更新しても、計算の基準は開始日のままです。").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    DatePicker("開始日時", selection: $entry.date)
-                    Text("開始日時から指定した時間が経過する日まで数えます。").font(.caption).foregroundStyle(.secondary)
+                    DatePicker("開始日", selection: $entry.date, displayedComponents: .date)
+                    Text("開始日から指定した時間が経過する日まで数えます。").font(.caption).foregroundStyle(.secondary)
                 }
+            }
+            if entry.kind != .date, let end = entry.targetDate {
+                Text("終了予定日：" + BusinessDays.key(end)).font(.headline)
             }
             if !error.isEmpty { Text(error).foregroundStyle(.red) }
             HStack {
@@ -141,7 +216,7 @@ private struct CountdownEditor: View {
                     catch { self.error = error.localizedDescription }
                 }.keyboardShortcut(.defaultAction)
             }
-        }.padding(26).frame(width: 480)
+        }.padding(26).frame(width: 560)
     }
     private func numberField(_ title: String, value: Binding<Double>) -> some View {
         HStack { Text(title); Spacer(); TextField(title, value: value, format: .number).textFieldStyle(ThemeTextFieldStyle()).frame(width: 170) }

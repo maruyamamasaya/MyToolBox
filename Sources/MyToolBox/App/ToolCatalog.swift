@@ -13,7 +13,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 
 /// Installed tools only; each route has a native implementation.
 enum ToolID: String, CaseIterable, Identifiable {
-    case gitBatch, personalCalendar, windowManager
+    case serverManagement, shortcutAudit, gitBatch, personalCalendar, personalCountdown, windowManager
     case sqlWorkspace
     case regexTester, regexBuilder, tableBuilder, csvStatistics
     case jsonWorkspace, logHighlighter, hashGenerator, testDataGenerator
@@ -22,8 +22,11 @@ enum ToolID: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .serverManagement: return "サーバー管理"
+        case .shortcutAudit: return "ショートカット競合チェック"
         case .gitBatch: return "Git一括管理"
         case .windowManager: return "ウィンドウマネージャー"
+        case .personalCountdown: return "カウントダウン"
         case .personalCalendar: return "マイカレンダー"
         case .sqlWorkspace: return "SQLツール"
         case .regexTester: return "正規表現テスター"
@@ -57,7 +60,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .httpStatusViewer: return "HTTPステータス一覧"
         case .hashGenerator: return "ハッシュ生成"
         case .testDataGenerator: return "テストデータ生成"
-        case .localMemo: return "ローカルメモ"
+        case .localMemo: return "クイックメモ"
         case .systemMonitor: return "システムモニター"
         case .businessDays: return "日程調整・営業日"
         case .audioCheck: return "オーディオチェック"
@@ -78,9 +81,12 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var subtitle: String {
         switch self {
+        case .serverManagement: return "写真サーバー・launchd・ポート・Tailscaleの状態確認"
+        case .shortcutAudit: return "起動中アプリ・macOSのキー割り当てと競合候補"
         case .gitBatch: return "リポジトリの状態確認・取得・コミット・送信"
         case .windowManager: return "ウィンドウの分割配置・中央・最大化・復元"
-        case .personalCalendar: return "月表示・複数の目標日・残り日数・カウントダウン"
+        case .personalCalendar: return "月表示・祝日・ショートカットですぐ開く"
+        case .personalCountdown: return "目標日・残り日数・時間目標・累計入力"
         case .sqlWorkspace: return "SQL整形・SELECTの説明・SQLiteで試す"
         case .regexTester: return "一致ハイライト・キャプチャ・置換プレビュー"
         case .regexBuilder: return "条件を並べて正規表現を作成・その場でテスト"
@@ -113,7 +119,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .httpStatusViewer: return "HTTPコードの意味・説明・1xx〜5xx分類"
         case .hashGenerator: return "SHA-1/256/384/512・HEX/Base64"
         case .testDataGenerator: return "ダミー文章・文字列・CSV・UUID v4を生成"
-        case .localMemo: return "複数メモ・自動保存・履歴・JSONバックアップ"
+        case .localMemo: return "すぐ書けるテキストメモ・検索・自動保存"
         case .systemMonitor: return "CPU・メモリ・通信・温度を確認"
         case .businessDays: return "日程候補の作成・営業日計算"
         case .audioCheck: return "左右のスピーカーと出力装置を確認"
@@ -134,9 +140,12 @@ enum ToolID: String, CaseIterable, Identifiable {
     }
     var symbol: String {
         switch self {
+        case .serverManagement: return "server.rack"
+        case .shortcutAudit: return "keyboard"
         case .gitBatch: return "arrow.triangle.branch"
         case .windowManager: return "rectangle.split.2x2"
-        case .personalCalendar: return "calendar.badge.clock"
+        case .personalCalendar: return "calendar"
+        case .personalCountdown: return "hourglass"
         case .sqlWorkspace: return "cylinder.split.1x2"
         case .regexTester: return "text.magnifyingglass"
         case .regexBuilder: return "wand.and.stars"
@@ -193,22 +202,23 @@ enum ToolID: String, CaseIterable, Identifiable {
 extension ToolID {
     var category: ToolCategory {
         switch self {
-        case .gitBatch, .sqlWorkspace: return .server
+        case .serverManagement, .gitBatch, .sqlWorkspace: return .server
         case .regexTester, .regexBuilder, .tableBuilder, .csvStatistics: return .text
         case .unitConverter, .percentageCalculator, .simpleCalculator, .numberCalculator: return .calculation
         case .logHighlighter, .cidrAnalyzer, .dnsRecordBuilder, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter: return .server
         case .jsonWorkspace, .hashGenerator, .testDataGenerator, .localMemo, .csvViewer, .csvEditor, .sequentialText, .clipboardFormatter, .textCleaner, .lineTools, .stringReplacer, .comparison, .textCodec: return .text
         case .randomNumberGenerator, .byteConverter, .numberBaseConverter, .bandwidthCalculator, .raidCalculator, .slaCalculator: return .calculation
         case .colorPalette, .imageResizer: return .design
-        case .windowManager, .portNumberFinder, .httpStatusViewer, .systemMonitor, .audioCheck, .microphoneCheck, .userAgent: return .system
-        case .personalCalendar, .businessDays, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .calendar
+        case .shortcutAudit, .windowManager, .portNumberFinder, .httpStatusViewer, .systemMonitor, .audioCheck, .microphoneCheck, .userAgent: return .system
+        case .personalCalendar, .personalCountdown, .businessDays, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .calendar
         }
     }
     func matches(_ query: String) -> Bool {
         let terms = query.split(whereSeparator: { $0.isWhitespace })
         let aliases = self == .testDataGenerator ? " dummy-data-generator uuid-generator text-generator ダミーデータ UUID テキスト生成" : ""
         let sqlAliases = self == .sqlWorkspace ? " sql-formatter sql-explainer sql-playground SQLite SQLフォーマッター SQL説明 SQL実行" : ""
-        let searchable = sqlAliases + title + " " + subtitle + " " + rawValue + " " + category.rawValue + aliases
+        let memoAliases = self == .localMemo ? " ローカルメモ quick note メモ帳" : ""
+        let searchable = memoAliases + sqlAliases + title + " " + subtitle + " " + rawValue + " " + category.rawValue + aliases
         return terms.allSatisfy { searchable.localizedStandardContains(String($0)) }
     }
 }

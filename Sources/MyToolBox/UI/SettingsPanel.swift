@@ -27,6 +27,7 @@ struct SettingsPanel: View {
                     }
                 }
             }
+            if store.managesBackgroundServices {
             ThemeSettingsSection("定期ログ（このMac内のみ）") {
                 Toggle("監視ログを保存", isOn: $store.logPreferences.enabled)
                 ThemePicker("記録間隔", selection: $store.logPreferences.interval, options: [(1.0, "1秒"), (10.0, "10秒"), (60.0, "60秒")])
@@ -51,6 +52,12 @@ struct SettingsPanel: View {
                 if store.loginStatus == "システム設定で承認待ち" { Button("ログイン項目の設定を開く") { SMAppService.openSystemSettingsLoginItems() } }
                 if let error = store.loginError { Text(error).foregroundStyle(.red).textSelection(.enabled) }
                 Text("明示的にボタンを押した場合だけ登録を変更します。安定した場所に.appを置いてから設定してください。").font(theme.font(11))
+            }
+            } else {
+                ThemeSettingsSection("本体の管理機能") {
+                    Text("定期ログとログイン起動はMyToolBox本体の設定で管理します。独立モニターは画面を閉じると計測を終了します。")
+                        .font(theme.font(11))
+                }
             }
         }.padding(16) }
     }

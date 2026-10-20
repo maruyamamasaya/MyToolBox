@@ -1,13 +1,19 @@
 import SwiftUI
 
 @MainActor final class GitBatchModel: ObservableObject {
-    @Published var root = UserDefaults.standard.string(forKey: "tools.gitBatch.root") ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Development").path
+    @Published var root: String
     @Published var rows: [GitRepositoryStatus] = []
     @Published var selected: Set<String> = []
     @Published var message = "Work sync \(Date().formatted(date: .numeric, time: .shortened))"
     @Published var busy = false
     @Published var status = "フォルダを選び、ローカル状態を読み込んでください。"
     private let worker = GitBatchWorker()
+    private let defaults: UserDefaults
+    init(defaults: UserDefaults = IndependentTools.defaults) {
+        self.defaults = defaults
+        root = defaults.string(forKey: "tools.gitBatch.root") ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Development").path
+    }
+    var canClose: Bool { !busy }
     func choose() {
         let panel = NSOpenPanel(); panel.canChooseFiles = false; panel.canChooseDirectories = true
         panel.directoryURL = URL(fileURLWithPath: root)
@@ -22,21 +28,25 @@ import SwiftUI
                 let paths = try await worker.discover(root: folder)
                 rows = await worker.run(paths: paths, action: .inspect, message: "")
                 selected = Set(paths)
-                UserDefaults.standard.set(folder, forKey: "tools.gitBatch.root")
+                defaults.set(folder, forKey: "tools.gitBatch.root")
                 status = paths.isEmpty ? "直下にGitリポジトリがありません。" : "\(paths.count)件を読み込みました。最新状態は「状態確認（通信）」で取得できます。"
             } catch { status = error.localizedDescription }
             busy = false
         }
     }
-    func run(_ action: GitBatchAction) {
+    func run(_ action: GitBatchAction, decide: (() -> Bool)? = nil) {
         guard !busy, !selected.isEmpty else { return }
         let targets = rows.filter { selected.contains($0.path) }
         if action == .finish || action == .start {
-            let alert = NSAlert()
-            alert.messageText = action == .finish ? "選択した\(targets.count)件をコミット・送信しますか？" : "選択した\(targets.count)件を更新しますか？"
-            alert.informativeText = targets.map(\.name).joined(separator: "\n") + (action == .finish ? "\n\n未追跡・削除を含む全変更をステージし、入力したメッセージでコミットしてoriginの同名ブランチへ送信します。\n\n\(message)" : "\n\noriginを取得し、未コミット変更・未送信がないリポジトリだけ早送り更新します。")
-            alert.addButton(withTitle: "実行"); alert.addButton(withTitle: "キャンセル")
-            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            if let decide {
+                guard decide() else { return }
+            } else {
+                let alert = NSAlert()
+                alert.messageText = action == .finish ? "選択した\(targets.count)件をコミット・送信しますか？" : "選択した\(targets.count)件を更新しますか？"
+                alert.informativeText = targets.map(\.name).joined(separator: "\n") + (action == .finish ? "\n\n未追跡・削除を含む全変更をステージし、入力したメッセージでコミットしてoriginの同名ブランチへ送信します。\n\n\(message)" : "\n\noriginを取得し、未コミット変更・未送信がないリポジトリだけ早送り更新します。")
+                alert.addButton(withTitle: "実行"); alert.addButton(withTitle: "キャンセル")
+                guard alert.runModal() == .alertFirstButtonReturn else { return }
+            }
         }
         busy = true; status = "\(targets.count)件を処理中…（各Git操作は最大120秒）"
         let commitMessage = message

@@ -24,10 +24,11 @@ private actor JSONWorkspaceWorker {
     var isDirty: Bool { text != savedText }
     private let worker = JSONWorkspaceWorker()
 
-    func confirmClose() -> Bool {
+    func confirmClose(decideDiscard: (() -> Bool)? = nil) -> Bool {
         guard !fileBusy else { return false }
         NSApp.keyWindow?.makeFirstResponder(nil)
         guard isDirty else { return true }
+        if let decideDiscard { return decideDiscard() }
         let alert = NSAlert()
         alert.messageText = "未保存のJSONを破棄しますか？"
         alert.informativeText = "編集内容を残す場合はキャンセルして「JSONを保存…」を選んでください。"

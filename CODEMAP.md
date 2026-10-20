@@ -28,7 +28,7 @@
 | 温度・ファン | Sources/MonitorKit/Monitoring/Sensors.swift、Sources/MonitorKit/Utilities/SMCReader.swift | AppleSMC、SMCCodec、Tp09、FNum | SensorsMonitor.read、SMCReader.read | Tests/MonitorKitTests/SMCTests.swift、evidence/sensors-native.jsonl |
 | OS補助・トポロジー | Sources/MonitorKit/Utilities/SystemAccess.swift | sysValue、logical-cpu-id、cluster-type | topology、entries、property | PoC |
 | CLI PoC | Sources/Probe/main.swift | monitor-probe、JSONEncoder | Probe.main | evidence/*.jsonl |
-| アプリアイコン | Resources/AppIcon/source.png、Resources/MyToolBox.icns、scripts/build_icon.py | CFBundleIconFile、iconutil | build_icon.py | ICNS変換、bundle確認 |
+| アプリアイコン | Resources/AppIcon/source.png、Resources/MyToolBox.icns、Resources/ToolIcons、scripts/build_icon.py、scripts/build_tool_icons.py | CFBundleIconFile、ToolIcon.icns、iconutil | embed_tool_apps.py | app_verify、test_verify、RenderToolIcons。[仕様](docs/TOOL_ICONS.md) |
 | プロジェクト生成 | scripts/generate_project.py | PBXNativeTarget、SWIFT_VERSION | main | Xcode build |
 | 標準検証 | scripts/verify.py、scripts/app_verify.py | check、verify | main、verify | scripts/test_verify.py |
 | 機能・測定定義 | docs/ | 指標、推定、移行 | TECHNICAL_VALIDATION.md | docsリンク検証 |
@@ -58,7 +58,7 @@ User-Agent Viewer：`UserAgentInfo.swift`（UA推定）→ `UserAgentView.swift`
 
 時間ツール：`UtilityTimer.swift`／`TimeCalculation.swift` → `TimerToolsView.swift`／`TimeCalculatorView.swift` → ToolCatalog / ToolWindows。`TimeToolsTests.swift`（未実行）。[仕様](docs/TIME_TOOLS.md)。
 
-ローカルメモ：`LocalMemo.swift`（LocalMemoArchive）→ `LocalMemoView.swift`（LocalMemoModel/View）→ ToolCatalog / ToolWindows。テスト保留項目は[仕様](docs/LOCAL_MEMO.md)。
+クイックメモ：`LocalMemo.swift`（LocalMemoArchive）→ `LocalMemoView.swift`（LocalMemoModel/View／QuickMemoTextEditor）→ ToolCatalog / ToolWindows。VerifyQuickMemoでNative編集・保存・Undo・3テーマ描画。[仕様](docs/LOCAL_MEMO.md)。
 
 ネットワーク早見表：`NetworkReference.swift`（PortReference／HTTPStatusReference）→ `NetworkReferenceView.swift` → ToolCatalog／ToolWindows。[仕様・保留テスト](docs/NETWORK_REFERENCE.md)。
 
@@ -78,12 +78,33 @@ SQL：`SQLText.swift`（字句・整形・説明）／`SQLPlayground.swift`（SQ
 
 追加ツール回帰：`Tests/MonitorKitTests/AddedToolsTests.swift`／`ServerAndEverydayTests.swift`。メモ・生成・検索、サーバー／日常計算を検証。`tools/VerifyAddedTools.swift`で隔離モデル・3テーマ描画。[結果](sessions/2026-10-15-49-batch-tool-validation.md)。
 
-マイカレンダー：`PersonalCountdown.swift`（日数・時間目標・保存）→ `PersonalCalendarView.swift` → ToolCatalog／ToolWindows。`PersonalCountdownTests.swift`、`tools/VerifyPersonalCalendar.swift`。[仕様](docs/PERSONAL_CALENDAR.md)。
+マイカレンダー：`PersonalCountdown.swift`（日数・時間目標・保存）→ `PersonalCalendarView.swift`（PersonalCalendarView／PersonalCountdownView）→ ToolCatalog／ToolWindows。`PersonalCountdownTests.swift`、`tools/VerifyPersonalCalendar.swift`。[仕様](docs/PERSONAL_CALENDAR.md)。
 
 セキュリティ：`Monitoring/Security.swift`（専用actor・Process・状態解析）→ `MonitorStore.refreshSecurity` → `UI/SecurityDetail.swift`／Dashboard。`SecurityTests.swift`。[取得仕様](docs/SECURITY.md)。
 
-ウィンドウ配置：`WindowLayout.swift`（座標・16配置）→ `WindowManagerView.swift`（AX・復元・Carbonホットキー）→ ToolCatalog／ToolWindows。`WindowLayoutTests.swift`。[仕様](docs/WINDOW_MANAGER.md)。
+ウィンドウ配置：`WindowLayout.swift`（座標・16配置）→ `WindowManagerView.swift`（AX・復元・モデル）／`WindowManagerShortcuts.swift`（Carbon登録）→ ToolCatalog／ToolWindows。`WindowLayoutTests.swift`。[仕様](docs/WINDOW_MANAGER.md)。
 
 Git一括管理：`Tools/GitBatch.swift`（GitBatchWorker／引数配列でGit実行）→ `GitBatchView.swift` → ToolCatalog／ToolWindows。`GitBatchTests.swift`。[仕様](docs/GIT_BATCH.md)。
 
 署名：`Resources/Signing.xcconfig`＋Git除外の`.local-signing.xcconfig` → generate_project.pyのDebug／Release → app_verify.pyのad hoc逆戻り拒否。test_verify.py。[運用](docs/CODE_SIGNING.md)。
+
+ショートカット競合：`ShortcutAudit.swift` → `ShortcutAuditView.swift` → ToolCatalog／ToolWindows。`ShortcutAuditTests.swift`。[取得範囲](docs/SHORTCUT_AUDIT.md)。
+
+拡大カレンダー：`ExpandedCalendarView.swift` → `CalendarAlmanac.swift`／生成済み`AlmanacData.swift`。`scripts/update_calendar_almanac.py`で公開暦データ更新、`CalendarAlmanacTests.swift`で2027年写真・正午月齢・閏月・範囲外検証。
+
+## サーバー管理
+`Sources/MonitorKit/Tools/ServerManagement.swift`、`Sources/MyToolBox/Tools/ServerManagementView.swift`。`ServerManagementCollector` → `ServerManagementModel.refresh` → `ToolWindows.show(.serverManagement)`。固定の health／launchd／8080／Tailscale を表示時・手動時のみ照会。関連テスト：`ServerManagementTests`。[仕様](docs/SERVER_MANAGEMENT.md)。
+
+天気・雨雲：`MonitorKit/Tools/JMAWeather.swift`（JMAWeatherIcon：主な天気の判定） → `UI/RainRadar.swift`（JMAWeatherSummaryModel／RainRadarController）← AppDelegate.toggleRainRadar。`JMAWeatherTests`、`tools/VerifyWeather.swift`。取得・操作は[仕様](docs/WEATHER.md)。
+
+独立メモ・タイマー・マイカレンダー・カウントダウン・JSON・CSV・画像・Git：`Tools/IndependentTools.swift` → `ToolWindows.show` → `AppDelegate`のhelper起動分岐。`scripts/embed_tool_apps.py`をgenerate_project.pyの最終ビルドフェーズで実行。設定は既存local.MyToolBoxドメイン、メモファイルは従来の保存先。検証は[独立プロセス記録](sessions/2026-10-20-independent-tools.md)。
+
+ショートカット移譲：`Tools/ToolShortcutModel.swift`のToolShortcutModel／IndependentShortcutCoordinator → ToolWindows。`tools/VerifyIndependentShortcuts.swift`は本番キーを登録せず、既存キー引継ぎ・本体再作成・キー変更・起動失敗・終了通知・競合からの復旧を検証。カレンダー保存／描画はVerifyPersonalCalendar。[追加2本の記録](sessions/2026-10-20-independent-calendars.md)。
+
+独立JSON／CSV：`IndependentTools.tools`／`embed_tool_apps.py`にjsonWorkspace・csvViewer・csvEditorを登録。`ToolWindows.show` → 各helperのJSONWorkspaceModel／CSVModel。`tools/VerifyIndependentDocuments.swift`で未保存キャンセル・処理中の終了拒否・実ファイル往復・保存失敗と4テーマ描画を確認。[結果](sessions/2026-10-20-independent-json-csv.md)。
+
+独立画像／Git：`IndependentTools.tools`／`embed_tool_apps.py`にimageResizer・gitBatchを登録。`GitBatchModel(defaults:)`は共有設定を注入し、canCloseをToolWindowsの終了制御に利用。`tools/VerifyIndependentImageGit.swift`は画像の実保存／一括変換と隔離したbare origin・cloneでGitモデルを検証し、4テーマを非表示描画。[結果](sessions/2026-10-20-independent-image-git.md)。
+
+独立ウィンドウマネージャー：`IndependentTools.needsBackgroundWindowManager`／`startsWithoutWindow`／`keepsRunningAfterClosing` → ToolWindows／AppDelegate。`RenderWindowManager.swift`は登録・AX境界を注入し、16キー・親再作成時の不干渉・常駐条件・競合復旧・対象除外と4テーマを検証。[結果](sessions/2026-10-20-independent-window-manager.md)。
+
+全55helper：`IndependentTools.tools = Set(ToolID.allCases)`。`scripts/tool_catalog.py`がSwiftのID／表示名を梱包・検証へ供給。独立モニターはToolWindows → MonitorStore(managesBackgroundServices: false)、本体だけがログ／ログインを管理。`tools/VerifyAllIndependentTools.swift`で実配送・close guard・終了境界・共有設定と4テーマを非表示検証。[結果](sessions/2026-10-20-all-independent-tools.md)。

@@ -21,11 +21,25 @@ public struct PersonalCountdown: Codable, Equatable, Identifiable {
         }
     }
     public func remainingDays(now: Date, calendar: Calendar = BusinessDays.calendar) -> Int {
-        if kind == .hours { return Int(ceil(max(0, targetHours - completedHours) / hoursPerDay)) }
-        let end = kind == .elapsed ? date.addingTimeInterval(targetHours * 3600) : date
+        let end = targetDate ?? date
         return calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: end)).day ?? 0
     }
-    public var targetDate: Date? { kind == .hours ? nil : kind == .elapsed ? date.addingTimeInterval(targetHours * 3600) : date }
+    public mutating func updateCompletedHours(_ hours: Double) throws {
+        guard kind == .hours else { throw ToolFailure.message("時間目標を選択してください") }
+        var updated = self
+        updated.completedHours = hours
+        try updated.validate()
+        self = updated
+    }
+    public var targetDate: Date? {
+        switch kind {
+        case .date: return date
+        case .elapsed: return BusinessDays.calendar.startOfDay(for: date).addingTimeInterval(targetHours * 3600)
+        case .hours:
+            guard targetHours.isFinite, completedHours.isFinite, hoursPerDay.isFinite, hoursPerDay > 0, (max(0, targetHours - completedHours) / hoursPerDay).isFinite else { return nil }
+            return BusinessDays.calendar.startOfDay(for: date).addingTimeInterval(max(0, targetHours - completedHours) / hoursPerDay * 86_400)
+        }
+    }
 }
 
 public enum PersonalCountdownStore {

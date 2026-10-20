@@ -19,3 +19,6 @@ DerivedData/
 
 # Machine-specific certificate selection; no private keys.
 .local-signing.xcconfig
+
+# Separately managed local music downloader integration and documentation.
+/LocalTools/MassyDownloader/

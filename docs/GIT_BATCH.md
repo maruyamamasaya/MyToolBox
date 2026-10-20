@@ -21,3 +21,7 @@ Detached HEAD、初期コミットなし、originなし、同名リモートブ�
 ## 検証
 
 GitBatchTestsは一時的なbare origin・2cloneを作り、チェック、dirty停止、コミット送信、リモート先行停止、ff更新、Detached HEAD、空リポジトリ失敗、メッセージ中のシェル文字の非実行を検証する。ユーザーのリモートへの送信は検証で行わない。`tools/RenderGitBatch.swift`で合成データの3テーマ描画を確認。実機のクリック操作は未検証。Full・Releaseビルド・署名検証成功。
+
+## 独立プロセス（次回デプロイ用）
+
+Git一括管理を同梱helperとして起動する実装を追加。本体終了・再起動では実行を止めず、対象フォルダ・選択・コミットメッセージ・一覧・処理結果をGit側モデルで維持する。起動済みツールの再選択は同じ画面へ戻る。選択フォルダの保存キーtools.gitBatch.rootを既存local.MyToolBoxドメインで引継ぐ。Git側の画面／アプリ終了は処理中に拒否し、操作前の更新／送信確認は維持する。テスト用確認境界を利用したローカルbare originとcloneだけの検証は[記録](../sessions/2026-10-20-independent-image-git.md)。本番未反映。

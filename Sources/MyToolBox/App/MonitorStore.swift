@@ -5,14 +5,14 @@ import ServiceManagement
 @MainActor final class MonitorStore: ObservableObject {
     @Published var snapshot: Snapshot?
     @Published var history = History()
-    @Published var preferences = Preferences.load() { didSet { preferences.save(); updateStatus?() } }
+    @Published var preferences: Preferences { didSet { preferences.save(to: defaults); updateStatus?() } }
     @Published var selected = "overview"
     @Published var alertLevels: [String: MenuSeverity] = [:]
     private var alerts = MenuAlerts()
     @Published var loginStatus = "未確認"
     @Published var loginError: String?
     @Published var sleeping = false
-    @Published var logPreferences = LogPreferences.load() { didSet { logPreferences.save() } }
+    @Published var logPreferences: LogPreferences { didSet { if managesBackgroundServices { logPreferences.save(to: defaults) } } }
     @Published var logError: String?
     @Published var lastLogDate: Date?
     private let logger = MonitoringLog()
@@ -24,7 +24,15 @@ import ServiceManagement
     private var observers: [NSObjectProtocol] = []
     var updateStatus: (() -> Void)?
 
-    init() {
+    let managesBackgroundServices: Bool
+    private let defaults: UserDefaults
+    init(defaults: UserDefaults = IndependentTools.defaults,
+         managesBackgroundServices: Bool = true, startsAutomatically: Bool = true) {
+        self.defaults = defaults
+        self.managesBackgroundServices = managesBackgroundServices
+        preferences = Preferences.load(from: defaults)
+        logPreferences = LogPreferences.load(from: defaults)
+        guard startsAutomatically else { return }
         let nc = NSWorkspace.shared.notificationCenter
         observers.append(nc.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.suspend() }
@@ -53,13 +61,20 @@ import ServiceManagement
         loop = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
+                defaults.synchronize()
+                let latest = Preferences.load(from: defaults)
+                if latest != preferences { preferences = latest }
+                let latestLogging = LogPreferences.load(from: defaults)
+                if latestLogging != logPreferences { logPreferences = latestLogging }
                 let result = await engine.sample(interface: preferences.interface)
                 guard !Task.isCancelled, !sleeping else { break }
                 snapshot = result; history.append(result); alertLevels = alerts.levels(result); updateStatus?()
-                do {
-                    if try await logger.append(result, preferences: logPreferences) { lastLogDate = result.date }
-                    logError = nil
-                } catch { logError = error.localizedDescription }
+                if managesBackgroundServices {
+                    do {
+                        if try await logger.append(result, preferences: logPreferences) { lastLogDate = result.date }
+                        logError = nil
+                    } catch { logError = error.localizedDescription }
+                }
                 try? await Task.sleep(nanoseconds: UInt64(preferences.interval * 1_000_000_000))
             }
         }
@@ -75,7 +90,13 @@ import ServiceManagement
             sleeping = false; start()
         }
     }
+    func stop() {
+        loop?.cancel(); loop = nil
+        observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
+        observers.removeAll()
+    }
     func refreshLoginStatus() {
+        guard managesBackgroundServices else { loginStatus = "本体で管理"; return }
         switch SMAppService.mainApp.status {
         case .enabled: loginStatus = "有効"
         case .notRegistered: loginStatus = "未登録"
@@ -85,6 +106,7 @@ import ServiceManagement
         }
     }
     func setLogin(_ enabled: Bool) {
+        guard managesBackgroundServices else { loginStatus = "本体で管理"; return }
         loginError = nil
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }

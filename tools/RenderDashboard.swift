@@ -21,7 +21,7 @@ import AppKit
             store.selected = selection
             let root = selection == "tools" ? AnyView(ToolLauncher(openTool: { _ in }, openMonitorSettings: {})) : AnyView(Dashboard(store: store, openTools: {}))
             let host = NSHostingView(rootView: ThemeRoot(override: selectedTheme) { root })
-            let size = selection == "tools" ? NSSize(width: 440, height: ToolLauncher.preferredHeight) : NSSize(width: 390, height: 620)
+            let size = selection == "tools" ? NSSize(width: 440, height: ToolLauncher.preferredHeight) : Dashboard.preferredSize
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
             window.appearance = NSAppearance(named: selectedTheme == .windows98 ? .aqua : .darkAqua)
             window.contentView = host

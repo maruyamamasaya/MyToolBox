@@ -57,7 +57,7 @@ struct SecurityCommandResult: Sendable {
 // Runs only on the dedicated collector actor. Files avoid pipe-buffer deadlocks.
 // Each command has bounded runtime and captures stdout/stderr independently.
 enum SecurityCommand {
-    static func run(path: String, arguments: [String], timeout: TimeInterval = 5) -> SecurityCommandResult {
+    static func run(path: String, arguments: [String], timeout: TimeInterval = 5, environment: [String: String] = [:]) -> SecurityCommandResult {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -70,6 +70,7 @@ enum SecurityCommand {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: path); process.arguments = arguments
             process.environment = ["LC_ALL": "C", "LANG": "C", "PATH": "/usr/bin:/usr/sbin:/bin:/sbin"]
+            process.environment?.merge(environment) { _, new in new }
             process.standardInput = FileHandle.nullDevice
             process.standardOutput = stdout; process.standardError = stderr
             try process.run()

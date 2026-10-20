@@ -3,21 +3,22 @@ import SwiftUI
 /// Semantic palettes derived from living-aurora-ui. Native UI shares one environment.
 struct AppTheme {
     var id: VisualTheme = .blueCosmos
+    var simple: Bool { id == .simpleDark }
     var classic: Bool { id == .windows98 }
-    var background: Color { Color(hex: classic ? 0x008080 : id == .livingAurora ? 0x05070c : 0x020611) }
-    var surface: Color { Color(hex: classic ? 0xc0c0c0 : id == .livingAurora ? 0x0d1220 : 0x070f22) }
-    var surfaceHigh: Color { Color(hex: classic ? 0xffffff : id == .livingAurora ? 0x12192a : 0x0a1630) }
-    var text: Color { Color(hex: classic ? 0x000000 : id == .livingAurora ? 0xeef2ff : 0xedf5ff) }
-    var muted: Color { Color(hex: classic ? 0x333333 : id == .livingAurora ? 0x949db3 : 0x8497b7) }
-    var accent: Color { Color(hex: classic ? 0x000080 : id == .livingAurora ? 0x8b6cff : 0x69a7ff) }
-    var edge: Color { Color(hex: classic ? 0x808080 : id == .livingAurora ? 0xd1deff : 0x97c2ff) }
-    var radius: CGFloat { classic ? 0 : id == .livingAurora ? 18 : 20 }
+    var background: Color { simple ? Color(nsColor: .windowBackgroundColor) : Color(hex: classic ? 0x008080 : id == .livingAurora ? 0x05070c : 0x020611) }
+    var surface: Color { simple ? Color(nsColor: .controlBackgroundColor) : Color(hex: classic ? 0xc0c0c0 : id == .livingAurora ? 0x0d1220 : 0x070f22) }
+    var surfaceHigh: Color { simple ? Color(nsColor: .textBackgroundColor) : Color(hex: classic ? 0xffffff : id == .livingAurora ? 0x12192a : 0x0a1630) }
+    var text: Color { simple ? Color.primary : Color(hex: classic ? 0x000000 : id == .livingAurora ? 0xeef2ff : 0xedf5ff) }
+    var muted: Color { simple ? Color.secondary : Color(hex: classic ? 0x333333 : id == .livingAurora ? 0x949db3 : 0x8497b7) }
+    var accent: Color { simple ? Color.accentColor : Color(hex: classic ? 0x000080 : id == .livingAurora ? 0x8b6cff : 0x69a7ff) }
+    var edge: Color { simple ? Color.gray : Color(hex: classic ? 0x808080 : id == .livingAurora ? 0xd1deff : 0x97c2ff) }
+    var radius: CGFloat { classic ? 0 : simple ? 8 : id == .livingAurora ? 18 : 20 }
     var fontName: String { NSFont(name: "Microsoft Sans Serif", size: 11) != nil ? "Microsoft Sans Serif" : "Tahoma" }
     func font(_ size: CGFloat = 11, weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
         classic && design != .monospaced ? .custom(fontName, size: min(size, 14)).weight(weight) : .system(size: size, weight: weight, design: design)
     }
     var panel: LinearGradient {
-        LinearGradient(colors: classic ? [surface, surface] : [surfaceHigh.opacity(id == .livingAurora ? 0.8 : 0.94), surface.opacity(0.9)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: classic || simple ? [surface, surface] : [surfaceHigh.opacity(id == .livingAurora ? 0.8 : 0.94), surface.opacity(0.9)], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }
 private struct ThemeKey: EnvironmentKey { static let defaultValue = AppTheme() }
@@ -60,6 +61,7 @@ struct ThemeBackground: View {
             switch theme.id {
             case .blueCosmos: CosmosBackground()
             case .livingAurora: AuroraBackground()
+            case .simpleDark: theme.background
             case .windows98: theme.surface
             }
         }.allowsHitTesting(false).accessibilityHidden(true)

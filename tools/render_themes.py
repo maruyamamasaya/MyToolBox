@@ -23,7 +23,7 @@ def main():
     if args.probe:
         subprocess.run(['build/theme-switch-probe'], cwd=ROOT, check=True)
     if args.render:
-        for theme in ['blue-cosmos', 'living-aurora', 'windows-98']:
+        for theme in ['blue-cosmos', 'living-aurora', 'simple-dark', 'windows-98']:
             for binary in ['render-local-tools', 'render-dashboard']:
                 subprocess.run([f'build/{binary}', theme], cwd=ROOT, check=True)
 

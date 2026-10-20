@@ -110,11 +110,15 @@ actor ImageResizeWorker {
         }
     }
     func resizeBatch() {
-        guard !busy, let size else { return }
+        guard !busy, size != nil else { return }
         let panel = NSOpenPanel(); panel.canChooseFiles = false; panel.canChooseDirectories = true
         panel.canCreateDirectories = true; panel.prompt = "ここに一括保存"
         panel.message = "選んだフォルダ内に新しいリサイズ用フォルダを作成します。元画像は変更しません。"
         guard panel.runModal() == .OK, let parent = panel.url else { return }
+        resizeBatch(in: parent)
+    }
+    func resizeBatch(in parent: URL) {
+        guard !busy, let size else { return }
         let urls = batchURLs, selectedFormat = format, selectedQuality = quality
         let sizing: ImageResizer.BatchSizing = batchScale.map { .scale($0) } ?? .pixels(size, keepRatio: keepRatio, widthBased: widthBased)
         invalidate(); busy = true; status = "一括リサイズを開始…"
@@ -139,10 +143,14 @@ actor ImageResizeWorker {
         }
     }
     func save() {
-        guard !busy, let output, let sourceURL, let size else { return }
+        guard !busy, output != nil, let sourceURL, let size else { return }
         let panel = NSSavePanel(); panel.allowedContentTypes = [format.type]
         panel.nameFieldStringValue = sourceURL.deletingPathExtension().lastPathComponent + "-\(size.width)x\(size.height)." + format.fileExtension
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        save(to: url)
+    }
+    func save(to url: URL) {
+        guard !busy, let output, let sourceURL else { return }
         busy = true; status = "保存中…"
         task = Task {
             do { try await worker.save(output, to: url, protecting: sourceURL); try Task.checkCancellation(); status = "保存しました：" + url.lastPathComponent }

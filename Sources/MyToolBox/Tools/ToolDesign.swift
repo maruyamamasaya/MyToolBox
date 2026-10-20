@@ -92,6 +92,7 @@ struct ToolCalendar: View {
     var showsHolidayNames = false
     var showsCellBorders = false
     var rowHeight: CGFloat = 29
+    var textScale: CGFloat = 1
     private var displayedMonth: Date {
         get { visibleMonth?.wrappedValue ?? month }
         nonmutating set { if let visibleMonth { visibleMonth.wrappedValue = newValue } else { month = newValue } }
@@ -104,7 +105,7 @@ struct ToolCalendar: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text(monthTitle).font(theme.font( 14, weight: .semibold, design: .rounded))
+                Text(monthTitle).font(theme.font( 14 * textScale, weight: .semibold, design: .rounded))
                 Spacer()
                 Button { shift(-1) } label: { Image(systemName: "chevron.left") }.accessibilityLabel("前の月")
                 Button { displayedMonth = Date(); if onSelect == nil { selection = Date() } } label: { Circle().fill(.secondary).frame(width: 6, height: 6).frame(width: 18, height: 18) }.help("今日").accessibilityLabel("今月を表示")
@@ -114,7 +115,7 @@ struct ToolCalendar: View {
                 let cellWidth = max(1, (geometry.size.width - 18) / 7)
                 VStack(spacing: 4) {
                     HStack(spacing: 3) {
-                        ForEach(Array(["日", "月", "火", "水", "木", "金", "土"].enumerated()), id: \.offset) { i, label in Text(label).font(theme.font( 10, weight: .medium)).foregroundStyle(i == 0 ? Color.red.opacity(0.7) : i == 6 ? .blue.opacity(0.8) : .secondary).frame(width: cellWidth, height: 20) }
+                        ForEach(Array(["日", "月", "火", "水", "木", "金", "土"].enumerated()), id: \.offset) { i, label in Text(label).font(theme.font( 10 * textScale, weight: .medium)).foregroundStyle(i == 0 ? Color.red.opacity(0.7) : i == 6 ? .blue.opacity(0.8) : .secondary).frame(width: cellWidth, height: 20) }
                     }
                     ForEach(0..<6) { row in
                         HStack(spacing: 3) {
@@ -137,8 +138,8 @@ struct ToolCalendar: View {
                 if let onSelect { onSelect(date); displayedMonth = date } else { selection = date }
             } label: {
                 VStack(spacing: 2) {
-                    Text("\(calendar.component(.day, from: date))").font(theme.font( 12, weight: selected ? .bold : .regular, design: .rounded))
-                    if showsHolidayNames, let holiday { Text(holiday).font(theme.font(8)).lineLimit(1) }
+                    Text("\(calendar.component(.day, from: date))").font(theme.font( 12 * textScale, weight: selected ? .bold : .regular, design: .rounded))
+                    if showsHolidayNames, let holiday { Text(holiday).font(theme.font(8 * textScale)).lineLimit(1) }
                     Circle().fill(holiday == nil ? Color.clear : selected ? .white : .red.opacity(0.75)).frame(width: 3, height: 3)
                 }.frame(maxWidth: .infinity).frame(height: rowHeight)
                     .foregroundStyle(selected ? (theme.classic ? Color.white : Color.black) : holiday != nil || cell % 7 == 0 ? .red.opacity(0.85) : cell % 7 == 6 ? .blue : .primary)

@@ -39,7 +39,7 @@ private struct Record: NSViewRepresentable {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 260), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
             window.contentView = host; host.frame = NSRect(x: 0, y: 0, width: 500, height: 260); windows.append(window)
         }
-        for theme in [VisualTheme.blueCosmos, .livingAurora, .windows98, .blueCosmos] {
+        for theme in [VisualTheme.blueCosmos, .livingAurora, .windows98, .simpleDark, .blueCosmos] {
             theme.save(to: defaults)
             try await Task.sleep(nanoseconds: 400_000_000)
             for (index, window) in windows.enumerated() {

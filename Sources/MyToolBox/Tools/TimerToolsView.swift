@@ -8,7 +8,7 @@ import Combine
     private var ticker: AnyCancellable?
     private let defaults: UserDefaults
     private let key = "tools.timerBoard.v1"
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = IndependentTools.defaults) {
         self.defaults = defaults
         if let data = defaults.data(forKey: key), let decoded = try? JSONDecoder().decode([UtilityTimer].self, from: data) {
             timers = Array(decoded.prefix(12)).filter { $0.duration.isFinite && $0.duration >= 0 && (!$0.countdown || $0.duration > 0) && $0.duration <= 359999 && $0.elapsed.isFinite && $0.elapsed >= 0 }
@@ -154,7 +154,7 @@ struct DurationFields: View {
     let pomodoro: Bool
     private var ticker: AnyCancellable?
     private let defaults: UserDefaults
-    init(pomodoro: Bool, defaults: UserDefaults = .standard) {
+    init(pomodoro: Bool, defaults: UserDefaults = IndependentTools.defaults) {
         self.pomodoro = pomodoro; self.defaults = defaults
         if pomodoro {
             workMinutes = max(1, min(180, defaults.object(forKey: "tools.pomodoro.work") as? Int ?? 25))

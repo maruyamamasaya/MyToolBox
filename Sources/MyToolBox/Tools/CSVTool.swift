@@ -27,8 +27,10 @@ import UniformTypeIdentifiers
             return descending ? order == .orderedDescending : order == .orderedAscending
         }
     }
-    func confirmClose() -> Bool {
+    func confirmClose(decideDiscard: (() -> Bool)? = nil) -> Bool {
+        guard !busy else { return false }
         guard dirty || input != loadedInput else { return true }
+        if let decideDiscard { return decideDiscard() }
         let alert = NSAlert(); alert.messageText = "未保存のCSV編集を破棄して閉じますか？"
         alert.informativeText = "保存する場合はキャンセルして、CSVで保存を選んでください。"
         alert.addButton(withTitle: "キャンセル"); alert.addButton(withTitle: "破棄して閉じる")
@@ -87,6 +89,11 @@ import UniformTypeIdentifiers
         NSApp.keyWindow?.makeFirstResponder(nil)
         let panel = NSSavePanel(); panel.allowedContentTypes = [txt ? .plainText : .commaSeparatedText]; panel.nameFieldStringValue = txt ? "edited-data.txt" : "edited-data.csv"
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        save(to: url)
+    }
+    func save(to url: URL) {
+        guard !busy else { return }
+        finishEditing()
         do { try CSVDocument.encoded(rows).write(to: url, options: .atomic); dirty = false; status = "保存しました：" + url.lastPathComponent }
         catch { status = error.localizedDescription }
     }

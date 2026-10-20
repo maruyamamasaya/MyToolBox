@@ -33,3 +33,9 @@ Status / Date
 - [0009：日程候補と営業日計算のカレンダー統合](0009-calendar-workspace.md)
 
 - [0010：更新時の署名固定](0010-stable-local-signing.md)
+
+- [0011：メモとタイマーの独立プロセス](0011-independent-memo-timers.md)
+
+- [0012：ウィンドウマネージャーの独立常駐](0012-window-manager-service.md)
+
+- [0013：全カタログツールの独立プロセス化](0013-all-independent-tools.md)

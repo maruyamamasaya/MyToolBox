@@ -33,3 +33,11 @@ Accessibility APIで選択中ウィンドウの位置とサイズだけを操作
 WindowLayoutTestsで負の画面座標・上下の画面・端数幅の隙間・中央のサイズ制限を検証。権限許可後の外部アプリ実操作とホットキー競合・複数画面は手動確認が必要。自動ビルド成功は実機操作の成功を意味しない。
 
 API：[Apple AXUIElementSetAttributeValue](https://developer.apple.com/documentation/applicationservices/1460434-axuielementsetattributevalue)、[AXIsProcessTrusted](https://developer.apple.com/documentation/applicationservices/1460720-axisprocesstrusted)。
+
+## 独立常駐
+
+同梱の独立版「ウィンドウマネージャー」がショートカット・対象アプリ・復元位置を保持する。本体は16キーを登録せず、保存済みの有効設定がONでhelperがいないときだけ、画面を表示せず起動する。helperが既にいる場合は再起動した本体から触らない。有効中に×で画面を閉じてもhelperは常駐し、一覧から再選択すると画面を再表示する。OFFにして閉じた場合は終了する。helper自身をメニュー／⌘Qで明示終了するとキーは停止し、有効設定は保持して次の本体起動時に復元する。
+
+保存先は既存local.MyToolBox／tools.windowManager.shortcuts.v1を継承。競合時は部分登録を含めて全解除し、ON設定を消さず理由を表示する。設定ONと実登録結果は別に扱う。親と他のMyToolBox helperも配置対象から除外する。
+
+独立版は親と異なるbundle IDのため、親へのアクセシビリティ許可を前提にしない。独立版「ウィンドウマネージャー」の許可はユーザーが確認する。同じ証明書でhelperを署名するが、実機のTCC許可維持は署名検証と別。許可・署名・ログイン設定をアプリや検証が自動変更することはない。[設計](../decisions/0012-window-manager-service.md)・[検証記録](../sessions/2026-10-20-independent-window-manager.md)。配置・最新版切替済み。許可済み表示と代表キーの左半分／復元を[利用者が実入力確認](../sessions/2026-10-20-helper-latest-shortcuts.md)。

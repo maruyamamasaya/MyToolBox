@@ -16,6 +16,8 @@ struct ToolLauncher: View {
     }
     var openTool: (ToolID) -> Void
     var openMonitorSettings: () -> Void
+    var openWindow: (() -> Void)? = nil
+    var resizable = false
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
@@ -78,10 +80,17 @@ struct ToolLauncher: View {
             HStack {
                 ThemeMenu()
                 Button(action: openMonitorSettings) { Label("設定", systemImage: "gearshape") }
+                if let openWindow {
+                    Button(action: openWindow) { Label("ウィンドウで開く", systemImage: "macwindow") }
+                }
                 Spacer()
                 Text("監視はバックグラウンドで継続").font(theme.font(9)).foregroundStyle(.secondary)
             }.buttonStyle(ThemeButtonStyle(plain: true)).font(theme.font( 11)).foregroundStyle(.secondary).padding(.horizontal, 22).padding(.vertical, 14).background { if theme.classic { theme.surface.overlay(ClassicBevel()) } }
-        }.frame(width: Self.preferredWidth, height: Self.preferredHeight).background(theme.classic ? theme.background : .clear)
+        }
+        .frame(width: resizable ? nil : Self.preferredWidth, height: resizable ? nil : Self.preferredHeight)
+        .frame(minWidth: resizable ? Self.preferredWidth : nil, maxWidth: resizable ? .infinity : nil,
+               minHeight: resizable ? 480 : nil, maxHeight: resizable ? .infinity : nil)
+        .background(theme.classic ? theme.background : .clear)
     }
     private func toolSection(_ title: String, tools: [ToolID], favoriteSection: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -92,7 +101,7 @@ struct ToolLauncher: View {
                 if favoriteSection { Text("ドラッグで並べ替え").font(theme.font(10)).foregroundStyle(.secondary) }
                 Rectangle().fill(theme.text.opacity(0.12)).frame(height: 1)
             }.accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 8) {
+            ToolLauncherGrid(resizable: resizable) {
                 ForEach(tools) { tool in
                     if favoriteSection {
                         toolButton(tool)
@@ -153,7 +162,8 @@ struct ToolLauncher: View {
 
     private func color(_ tool: ToolID) -> Color {
         switch tool {
-        case .gitBatch: return .orange
+        case .serverManagement: return .cyan
+        case .shortcutAudit, .gitBatch: return .orange
         case .sqlWorkspace: return .indigo
         case .regexTester, .regexBuilder: return .indigo
         case .tableBuilder, .csvStatistics: return .teal
@@ -168,7 +178,7 @@ struct ToolLauncher: View {
         case .windowManager: return .cyan
         case .systemMonitor: return .green
         case .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .orange
-        case .personalCalendar, .businessDays: return Color(red: 0.02, green: 0.65, blue: 0.47)
+        case .personalCalendar, .personalCountdown, .businessDays: return Color(red: 0.02, green: 0.65, blue: 0.47)
         case .audioCheck: return Color(red: 0.0, green: 0.62, blue: 0.87)
         case .microphoneCheck: return .purple
         case .csvViewer: return .blue
@@ -183,6 +193,44 @@ struct ToolLauncher: View {
         case .userAgent: return .cyan
         case .colorPalette: return .pink
         case .comparison: return Color(red: 0.23, green: 0.43, blue: 0.94)
+        }
+    }
+}
+
+// Keep every launcher cell alive while scrolling. The catalog is small and bounded;
+// lazy cell eviction can leave symbols missing when a section re-enters the viewport.
+private struct ToolLauncherGrid: Layout {
+    var resizable: Bool
+    private let horizontalSpacing: CGFloat = 6
+    private let verticalSpacing: CGFloat = 8
+    private let cellHeight: CGFloat = 90
+
+    private func resolvedWidth(_ width: CGFloat?) -> CGFloat {
+        // SwiftUI measures layouts with unspecified and infinite proposals too.
+        guard let width, width.isFinite else { return ToolLauncher.preferredWidth - 32 }
+        return max(0, width)
+    }
+
+    private func columns(for width: CGFloat) -> Int {
+        guard resizable else { return 6 }
+        let count = (resolvedWidth(width) + horizontalSpacing) / (80 + horizontalSpacing)
+        return Int(min(CGFloat(ToolID.allCases.count), max(1, count)))
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = resolvedWidth(proposal.width)
+        let count = columns(for: width)
+        let rows = (subviews.count + count - 1) / count
+        return CGSize(width: width, height: CGFloat(rows) * cellHeight + CGFloat(max(0, rows - 1)) * verticalSpacing)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let count = columns(for: bounds.width)
+        let width = max(0, (bounds.width - CGFloat(count - 1) * horizontalSpacing) / CGFloat(count))
+        for (index, subview) in subviews.enumerated() {
+            subview.place(at: CGPoint(x: bounds.minX + CGFloat(index % count) * (width + horizontalSpacing),
+                                      y: bounds.minY + CGFloat(index / count) * (cellHeight + verticalSpacing)),
+                          anchor: .topLeading, proposal: ProposedViewSize(width: width, height: cellHeight))
         }
     }
 }

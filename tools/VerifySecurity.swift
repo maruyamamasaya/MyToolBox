@@ -17,7 +17,7 @@ import SwiftUI
         guard zip(first, store.securityReadings.compactMap(\.checkedAt)).allSatisfy({ $0 < $1 }) else { fatalError("dates") }
         for theme in VisualTheme.allCases {
             let host = NSHostingView(rootView: ThemeRoot(override: theme) { Dashboard(store: store) })
-            let size = NSSize(width: 390, height: 620)
+            let size = Dashboard.preferredSize
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
             window.contentView = host; host.frame = NSRect(origin: .zero, size: size)
             store.selected = "security"

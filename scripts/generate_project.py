@@ -43,7 +43,7 @@ def main():
             PRODUCT_NAME = MyToolBox; PRODUCT_BUNDLE_IDENTIFIER = local.MyToolBox;
             MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; ARCHS = arm64;
             ALWAYS_SEARCH_USER_PATHS = NO; SWIFT_VERSION = 5.0; SWIFT_OPTIMIZATION_LEVEL = "{opt}";
-            GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Resources/Info.plist; INFOPLIST_KEY_LSUIElement = YES;
+            GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Resources/Info.plist; INFOPLIST_KEY_LSUIElement = NO;
             INFOPLIST_KEY_CFBundleDisplayName = MyToolBox;
             CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0;
             CODE_SIGN_ENTITLEMENTS = Resources/MyToolBox.entitlements; CODE_SIGN_IDENTITY = "$(MYTOOLBOX_SIGNING_IDENTITY)"; CODE_SIGN_STYLE = Manual;
@@ -52,7 +52,8 @@ def main():
             LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
         }};'''))
     configlist = obj('configlist', f'isa = XCConfigurationList; buildConfigurations = ({",".join(configs)},); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
-    target = obj('target', f'isa = PBXNativeTarget; buildConfigurationList = {configlist}; buildPhases = ({sources},{resources},); buildRules = (); dependencies = (); name = MyToolBox; productName = MyToolBox; productReference = {product}; productType = "com.apple.product-type.application";')
+    helpers = obj('embedHelpers', r'isa = PBXShellScriptBuildPhase; buildActionMask = 2147483647; files = (); inputPaths = (); outputPaths = (); alwaysOutOfDate = 1; runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/sh; shellScript = "python3 \"$SRCROOT/scripts/embed_tool_apps.py\"";')
+    target = obj('target', f'isa = PBXNativeTarget; buildConfigurationList = {configlist}; buildPhases = ({sources},{resources},{helpers},); buildRules = (); dependencies = (); name = MyToolBox; productName = MyToolBox; productReference = {product}; productType = "com.apple.product-type.application";')
     project = obj('project', f'isa = PBXProject; attributes = {{ LastUpgradeCheck = 2600; }}; buildConfigurationList = {configlist}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en,Base,ja); mainGroup = {group}; productRefGroup = {products}; projectDirPath = ""; projectRoot = ""; targets = ({target},);')
     directory = ROOT / 'MyToolBox.xcodeproj'; directory.mkdir(exist_ok=True)
     (directory / 'project.pbxproj').write_text('// !$*UTF8*$!\n{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n' + '\n'.join(objects) + f'\n}}; rootObject = {project}; }}\n')

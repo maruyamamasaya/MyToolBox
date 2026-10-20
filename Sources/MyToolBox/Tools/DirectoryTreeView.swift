@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
     @Published private(set) var redoStack: [[DirectoryTree.Node]] = []
     private let defaults: UserDefaults
     private let key = "tools.directoryTree.v1"
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = IndependentTools.defaults) {
         self.defaults = defaults
         if let text = defaults.string(forKey: key) {
             do { nodes = try DirectoryTree.decode(text) } catch { self.error = "保存データを読み込めませんでした。元データは保持しています: " + error.localizedDescription }
@@ -127,7 +127,7 @@ import UniformTypeIdentifiers
 }
 struct DirectoryTreeView: View {
     @StateObject private var model: DirectoryTreeModel
-    init(defaults: UserDefaults = .standard) { _model = StateObject(wrappedValue: DirectoryTreeModel(defaults: defaults)) }
+    init(defaults: UserDefaults = IndependentTools.defaults) { _model = StateObject(wrappedValue: DirectoryTreeModel(defaults: defaults)) }
     @State private var name = "new-folder"
     @State private var folder = true
     @State private var format = DirectoryTree.Format.tree
