@@ -17,7 +17,7 @@ class DeploymentTests(unittest.TestCase):
             deploy.validate_identity(Path('/new.app'), Path('/old.app'))
             checks = [call.args[0] for call in run.call_args_list if '-R' in call.args[0]]
             self.assertEqual(len(checks), 1 + len(deploy.tool_catalog()))
-            self.assertTrue(all(command[command.index('-R') + 1] == requirement for command in checks))
+            self.assertTrue(all(command[command.index('-R') + 1] == '=' + requirement for command in checks))
 
     def test_ad_hoc_identity_refused(self):
         with patch.object(deploy, 'run', return_value=SimpleNamespace(stdout='', stderr='designated => cdhash H"1234"')):

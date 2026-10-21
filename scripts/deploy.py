@@ -52,7 +52,7 @@ def validate_identity(source, target):
             raise RuntimeError('権限維持を保証できない旧署名です：' + str(old))
         # Evaluate the installed identity against the new code; do not merely
         # check that both builds have some certificate or the same bundle ID.
-        run(['codesign', '--verify', '--strict', '-R', requirement, str(source / relative)])
+        run(['codesign', '--verify', '--strict', '-R', '=' + requirement, str(source / relative)])
 
 
 def deploy(source, target, apply=False):
