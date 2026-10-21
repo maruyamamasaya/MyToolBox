@@ -186,92 +186,161 @@ private final class MicSamples: @unchecked Sendable {
 struct AudioCheckView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var model: SpeakerModel
+    @State private var expanded: Bool
+    @State private var showsHelp = false
+    init(model: SpeakerModel, initiallyExpanded: Bool = false) {
+        self.model = model; _expanded = State(initialValue: initiallyExpanded)
+    }
     var body: some View {
-        ToolPage("オーディオチェック", subtitle: "左右の音を、ひとつずつ確かめる。", symbol: "headphones", tint: .cyan) {
-            VStack(spacing: 20) {
-                ToolCard {
-                    HStack(spacing: 14) {
-                        Image(systemName: "hifispeaker.2").font(theme.font(theme.classic ? 13 : 22)).foregroundStyle(.cyan)
-                        VStack(alignment: .leading, spacing: 6) {
-                            ToolSectionLabel(title: "出力デバイス", symbol: "cable.connector")
-                            ThemePicker("出力", selection: $model.device, options: [(AudioDeviceID(0), "システムの既定")] + model.devices.map { ($0.id, $0.name) }).labelsHidden().frame(maxWidth: .infinity)
+        VStack(spacing: 10) {
+            HStack {
+                Label("オーディオチェック", systemImage: "headphones").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                ThemeMenu()
+            }
+            HStack {
+                Picker("出力", selection: $model.device) {
+                    Text("システムの既定").tag(AudioDeviceID(0))
+                    ForEach(model.devices) { Text($0.name).tag($0.id) }
+                }
+                Button { model.stop(); model.devices = AudioDevice.devices(input: false); model.device = 0 } label: {
+                    Image(systemName: "arrow.clockwise").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("出力デバイス一覧を更新")
+            }
+            ScrollView {
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        channelButton("左", "l.circle", channel: 0)
+                        channelButton("右", "r.circle", channel: 1)
+                        channelButton("ステレオ", "hifispeaker.2", channel: 2)
+                    }
+                    Text("ステレオ：左 → 右 → 両方").font(.caption).foregroundStyle(.secondary)
+                    VStack(spacing: 10) {
+                        HStack {
+                            Label("テスト音量", systemImage: "speaker.wave.1").font(.caption)
+                            Spacer(); Text("\(Int(model.volume * 100))%").font(.system(.title3, design: .rounded).bold()).monospacedDigit()
                         }
-                        Button { model.stop(); model.devices = AudioDevice.devices(input: false); model.device = 0 } label: { Image(systemName: "arrow.clockwise") }.help("デバイス一覧を更新")
+                        Slider(value: $model.volume, in: 0.05...0.6).accessibilityLabel("テスト音量")
+                        HStack { Text("小さな音量からお試しください"); Spacer(); Text("440 Hz") }.font(.caption2).foregroundStyle(.secondary)
+                    }.padding(10).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 8))
+                    HStack(alignment: .top, spacing: 8) {
+                        Circle().fill(model.playing ? Color.cyan : Color.secondary.opacity(0.4)).frame(width: 7, height: 7).padding(.top, 4)
+                        Text(model.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                     }
-                }
-                HStack(spacing: 14) {
-                    AudioAction(title: "左", subtitle: "LEFT CHANNEL", symbol: "l.circle", action: { model.play(channel: 0) })
-                    AudioAction(title: "右", subtitle: "RIGHT CHANNEL", symbol: "r.circle", action: { model.play(channel: 1) })
-                    AudioAction(title: "ステレオ", subtitle: "左 → 右 → 両方", symbol: "hifispeaker.2", action: { model.play(channel: 2) })
-                }
-                ToolCard {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack { ToolSectionLabel(title: "テスト音量", symbol: "speaker.wave.1"); Spacer(); Text("\(Int(model.volume * 100))%").font(theme.font( 20, weight: .semibold, design: .rounded)).monospacedDigit() }
-                        Slider(value: $model.volume, in: 0.05...0.6)
-                        HStack { Text("小さな音量からお試しください").font(theme.font(11)).foregroundStyle(.secondary); Spacer(); Text("440 Hz / フェード付き").font(theme.font(11)).foregroundStyle(.tertiary) }
+                }.padding(2)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            HStack {
+                Button { model.stop(); model.status = "停止しました" } label: { Label("停止", systemImage: "stop.fill").frame(minWidth: 70, minHeight: 24) }.disabled(!model.playing)
+                Spacer()
+                Button { showsHelp.toggle() } label: { Image(systemName: "questionmark.circle").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("オーディオチェックの説明").popover(isPresented: $showsHelp) {
+                        Text("440Hzの音をアプリ内で生成し、フェードを付けて再生します。システムの出力先と音量は変更しません。テスト音量は5〜60%です。デバイスを接続し直した場合は一覧を更新してください。")
+                            .font(.caption).padding(16).frame(width: 310)
                     }
-                }
-                HStack(spacing: 10) {
-                    Circle().fill(model.playing ? Color.cyan : Color.secondary.opacity(0.4)).frame(width: 7, height: 7)
-                    Text(model.status).font(theme.font( 12)).foregroundStyle(.secondary).textSelection(.enabled)
-                    Spacer(minLength: 4)
-                    Button { model.stop(); model.status = "停止しました" } label: { Label("停止", systemImage: "stop.fill") }.disabled(!model.playing)
-                }.frame(minHeight: 30)
-                Spacer(minLength: 0)
-                ToolFootnote(text: "音はアプリ内で生成します。システムの出力先と音量は変更しません。デバイスを接続し直した場合は、一覧を更新してください。")
-            }.padding(24)
-        }.frame(minWidth: 680, minHeight: 600).onChange(of: model.device) { _, _ in model.stop() }
+            }
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 420, height: 400)))
+            .frame(minWidth: expanded ? 800 : 400, idealWidth: expanded ? 1100 : 420,
+                   minHeight: expanded ? 600 : 380, idealHeight: expanded ? 850 : 400)
+            .onChange(of: model.device) { _, _ in model.stop() }
+    }
+    private func channelButton(_ title: String, _ symbol: String, channel: Int) -> some View {
+        Button { model.play(channel: channel) } label: {
+            VStack(spacing: 8) {
+                Image(systemName: symbol).font(.system(size: expanded ? 44 : 24))
+                Text(title).font(.headline)
+            }.frame(maxWidth: .infinity, minHeight: expanded ? 160 : 70).contentShape(Rectangle())
+        }.accessibilityLabel(title + "をテスト再生")
     }
 }
+
 struct MicrophoneCheckView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var model: MicrophoneModel
     private var meterValue: Double { model.level > 0 ? max(0, min(1, (20 * log10(model.level) + 60) / 60)) : 0 }
+    @State private var expanded: Bool
+    @State private var showsHelp = false
+    init(model: MicrophoneModel, initiallyExpanded: Bool = false) {
+        self.model = model; _expanded = State(initialValue: initiallyExpanded)
+    }
     var body: some View {
-        ToolPage("マイクチェック", subtitle: "声のレベルと、聞こえ方を確認。", symbol: "mic", tint: .purple) {
-            VStack(spacing: 18) {
-                ToolCard {
-                    HStack(spacing: 12) {
-                        Image(systemName: "mic.fill").font(theme.font(theme.classic ? 13 : 22)).foregroundStyle(.purple)
-                        VStack(alignment: .leading, spacing: 6) {
-                            ToolSectionLabel(title: "入力デバイス", symbol: "cable.connector")
-                            ThemePicker("入力", selection: $model.device, options: [(AudioDeviceID(0), "システムの既定")] + model.devices.map { ($0.id, $0.name) }).labelsHidden().disabled(model.running || model.pending)
-                        }
-                        Spacer()
-                        Button { model.stop(clear: true); model.devices = AudioDevice.devices(input: true); model.device = 0 } label: { Image(systemName: "arrow.clockwise") }.help("デバイス一覧を更新")
-                    }
+        VStack(spacing: 10) {
+            HStack {
+                Label("マイクチェック", systemImage: "mic").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 }
-                VStack(spacing: 18) {
-                    HStack(spacing: 6) { Circle().fill(model.running ? Color.green : Color.secondary).frame(width: 6, height: 6); Text(model.running ? "マイク入力中" : "マイク停止中").font(theme.font(11)).foregroundStyle(.secondary) }
-                    Text(model.decibels).font(theme.font( 42, weight: .medium, design: .rounded)).monospacedDigit().contentTransition(.numericText())
-                    HStack(spacing: 4) {
-                        ForEach(0..<40) { i in
-                            RoundedRectangle(cornerRadius: theme.classic ? 0 : 3).fill(Double(i) / 40 < meterValue ? (i > 35 ? Color.red : i > 29 ? Color.yellow : Color.mint) : Color.primary.opacity(0.07)).frame(height: 28)
+                ThemeMenu()
+            }
+            HStack {
+                Picker("入力", selection: $model.device) {
+                    Text("システムの既定").tag(AudioDeviceID(0))
+                    ForEach(model.devices) { Text($0.name).tag($0.id) }
+                }.disabled(model.running || model.pending)
+                Button { model.stop(clear: true); model.devices = AudioDevice.devices(input: true); model.device = 0 } label: {
+                    Image(systemName: "arrow.clockwise").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("入力デバイス一覧を更新").help("一覧を更新して録音を破棄")
+            }
+            ScrollView {
+                VStack(spacing: 10) {
+                    VStack(spacing: 10) {
+                        HStack(spacing: 6) {
+                            Circle().fill(model.running ? Color.green : Color.secondary).frame(width: 6, height: 6)
+                            Text(model.running ? "マイク入力中" : "マイク停止中").font(.caption).foregroundStyle(.secondary)
                         }
-                    }
-                    HStack { Text("−60"); Spacer(); Text("−30"); Spacer(); Text("0 dBFS") }.font(theme.font( 10, design: .monospaced)).foregroundStyle(.tertiary)
-                    HStack(spacing: 12) {
-                        Button { model.start() } label: { Label(model.pending ? "許可を確認中…" : "マイクを開始", systemImage: "mic.fill").padding(.horizontal, 8) }.buttonStyle(ThemeButtonStyle(prominent: true)).controlSize(.large).disabled(model.running || model.pending)
-                        Button { if model.recording { model.finishRecording() } else { model.stop(); model.status = "停止しました" } } label: { Label("停止", systemImage: "stop.fill") }.controlSize(.large).disabled(!model.running && !model.pending && !model.hasRecording)
-                    }
-                }.padding(24).frame(maxWidth: .infinity).background(Color.purple.opacity(0.06), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 18))
-                    .overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 18).strokeBorder(Color.purple.opacity(0.15)))
-                ToolCard {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack { ToolSectionLabel(title: "録音して聞き返す", symbol: "waveform"); Spacer(); Text(String(format: "%.1f / 10 秒", model.elapsed)).font(theme.font( 13, design: .monospaced)).foregroundStyle(.secondary) }
-                        ProgressView(value: model.elapsed, total: 10).tint(model.recording ? .red : .purple)
-                        HStack(spacing: 12) {
-                            Button { model.recording ? model.finishRecording() : model.record() } label: { Label(model.recording ? "録音を終了" : "10秒録音", systemImage: model.recording ? "stop.circle.fill" : "record.circle").foregroundStyle(model.recording ? .red : .primary) }.disabled(!model.running)
-                            Button { model.play() } label: { Label("録音を再生", systemImage: "play.fill") }.disabled(!model.hasRecording || model.running)
+                        Text(model.decibels).font(.system(size: expanded ? 64 : 32, weight: .medium, design: .rounded)).monospacedDigit().contentTransition(.numericText())
+                        HStack(spacing: expanded ? 5 : 3) {
+                            ForEach(0..<40) { index in
+                                RoundedRectangle(cornerRadius: theme.classic ? 0 : 2)
+                                    .fill(Double(index) / 40 < meterValue ? (index > 35 ? Color.red : index > 29 ? Color.yellow : Color.mint) : Color.primary.opacity(0.07))
+                                    .frame(height: expanded ? 64 : 22)
+                            }
+                        }.accessibilityLabel("入力レベル").accessibilityValue(model.decibels)
+                        HStack { Text("−60"); Spacer(); Text("−30"); Spacer(); Text("0 dBFS") }.font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary)
+                        HStack {
+                            Button { model.start() } label: { Label(model.pending ? "許可確認中…" : "マイクを開始", systemImage: "mic.fill").frame(maxWidth: .infinity, minHeight: 24) }
+                                .disabled(model.running || model.pending)
+                            Button {
+                                if model.recording { model.finishRecording() } else { model.stop(); model.status = "停止しました" }
+                            } label: { Label("停止", systemImage: "stop.fill").frame(maxWidth: .infinity, minHeight: 24) }
+                                .disabled(!model.running && !model.pending && !model.hasRecording)
+                        }
+                    }.padding(10).frame(maxWidth: .infinity).background(Color.purple.opacity(0.06), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 10))
+                    VStack(spacing: 8) {
+                        HStack {
+                            Label("録音して聞き返す", systemImage: "waveform").font(.caption)
                             Spacer()
-                            Text("メモリ内のみ").font(theme.font(11)).foregroundStyle(.tertiary)
+                            Text(String(format: "%.1f / 10秒", model.elapsed)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
                         }
+                        ProgressView(value: model.elapsed, total: 10).tint(model.recording ? .red : .purple)
+                        HStack {
+                            Button { model.recording ? model.finishRecording() : model.record() } label: {
+                                Label(model.recording ? "録音を終了" : "10秒録音", systemImage: model.recording ? "stop.circle.fill" : "record.circle")
+                                    .foregroundStyle(model.recording ? .red : .primary).frame(maxWidth: .infinity, minHeight: 24)
+                            }.disabled(!model.running)
+                            Button { model.play() } label: { Label("録音を再生", systemImage: "play.fill").frame(maxWidth: .infinity, minHeight: 24) }
+                                .disabled(!model.hasRecording || model.running)
+                        }
+                    }.padding(10).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 10))
+                    Text(model.status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                }.padding(2)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            HStack {
+                Text("最大10秒・メモリ内のみ").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button { showsHelp.toggle() } label: { Image(systemName: "questionmark.circle").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("マイクチェックの説明").popover(isPresented: $showsHelp) {
+                        Text("入力レベルはデジタル信号のRMS（dBFS）で、周囲の音圧ではありません。開始操作でマイク許可を確認します。録音後はマイクを停止。画面を閉じると録音を破棄し、保存・外部送信は行いません。再生はシステムの出力装置を使います。デバイス一覧の更新は録音を破棄します。")
+                            .font(.caption).padding(16).frame(width: 310)
                     }
-                }
-                Text(model.status).font(theme.font(11)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
-                Spacer(minLength: 0)
-                ToolFootnote(text: "入力レベルはデジタル信号のRMS（dBFS）で、周囲の音圧ではありません。録音後はマイクを停止。画面を閉じると録音を破棄し、保存・外部送信は行いません。")
-            }.padding(24)
-        }.frame(minWidth: 680, minHeight: 740)
+            }
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 400, height: 500)))
+            .frame(minWidth: expanded ? 800 : 380, idealWidth: expanded ? 1100 : 400,
+                   minHeight: expanded ? 600 : 460, idealHeight: expanded ? 850 : 500)
     }
 }

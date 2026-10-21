@@ -49,6 +49,47 @@ final class ServerManagementTests: XCTestCase {
         XCTAssertFalse(ServerCheck.health.command.1.contains("--location"))
         XCTAssertTrue(ServerCheck.health.command.1.contains("/dev/null"))
     }
+    func testMusicListenerRequiresExpectedRuntimeAndPort() {
+        XCTAssertEqual(parse(.musicListener, "p123\ncPython\nn192.168.0.35:8768").state, .confirmed)
+        XCTAssertEqual(parse(.musicListener, "p123\ncPython\nn127.0.0.1:8769").state, .unavailable)
+        XCTAssertEqual(parse(.musicListener, "p123\ncother-secret\nn*:8768").state, .attention)
+        XCTAssertFalse(parse(.musicListener, "p123\ncother-secret\nn*:8768").detail.contains("secret"))
+        XCTAssertEqual(parse(.musicListener, "p123\ncPython\nn*:8768\np124\ncnode\nn127.0.0.1:8768").state, .attention)
+        XCTAssertEqual(parse(.musicListener, "cPython\nn*:8768").state, .unavailable)
+    }
+    func testIndicatorRejectsMissingStaleAndFutureReadings() {
+        let now = Date(timeIntervalSince1970: 1000)
+        func row(_ age: TimeInterval, _ state: ServerCheckState = .confirmed) -> ServerCheckReading {
+            .init(item: .health, state: state, detail: "", checkedAt: now.addingTimeInterval(-age))
+        }
+        XCTAssertNil(ServerIndicator.state(for: .health, readings: [], now: now))
+        XCTAssertNil(ServerIndicator.state(for: .musicListener, readings: [row(0)], now: now))
+        XCTAssertEqual(ServerIndicator.state(for: .health, readings: [row(150)], now: now), .confirmed)
+        XCTAssertNil(ServerIndicator.state(for: .health, readings: [row(151)], now: now))
+        XCTAssertNil(ServerIndicator.state(for: .health, readings: [row(-1)], now: now))
+        XCTAssertEqual(ServerIndicator.state(for: .health, readings: [row(0, .unavailable)], now: now), .unavailable)
+        XCTAssertEqual(ServerIndicator.state(for: .health, readings: [row(0, .attention)], now: now), .attention)
+    }
+    func testMusicInternalListenerRequiresLoopbackAndExpectedRuntime() {
+        XCTAssertEqual(parse(.musicLocalListener, "p123\ncPython\nn127.0.0.1:8769").state, .confirmed)
+        XCTAssertEqual(parse(.musicLocalListener, "p123\ncpython3.15\nn[::1]:8769").state, .confirmed)
+        XCTAssertEqual(parse(.musicLocalListener, "p123\ncPython\nn*:8769").state, .attention)
+        XCTAssertEqual(parse(.musicLocalListener, "p123\ncPython\nn192.168.0.35:8769").state, .attention)
+        XCTAssertEqual(parse(.musicLocalListener, "p123\ncprivate\nn127.0.0.1:8769").state, .attention)
+        XCTAssertFalse(parse(.musicLocalListener, "p123\ncprivate\nn127.0.0.1:8769").detail.contains("private"))
+        XCTAssertEqual(parse(.musicLocalListener, "p123\ncPython\nn127.0.0.1:8768").state, .unavailable)
+        XCTAssertEqual(parse(.musicLocalListener, "").state, .unavailable)
+    }
+    func testMusicLaunchdUsesOnlyBoundedDiagnosticResponse() {
+        XCTAssertEqual(parse(.musicLaunchd, "").state, .unavailable)
+        let row = parse(.musicLaunchd, "private-environment")
+        XCTAssertEqual(row.state, .confirmed)
+        XCTAssertFalse(row.detail.contains("private"))
+        XCTAssertEqual(ServerCheck.musicLaunchd.command.0, "/bin/launchctl")
+        XCTAssertEqual(ServerCheck.musicLaunchd.command.1.first, "blame")
+        XCTAssertTrue(ServerCheck.musicLaunchd.command.1.last!.hasSuffix("/local.mymusic.cardinal-server"))
+        XCTAssertTrue(ServerCheck.musicLaunchd.command.1.last!.hasPrefix("gui/"))
+    }
     private func parse(_ item: ServerCheck, _ output: String) -> ServerCheckReading {
         ServerManagementCollector.parse(item, result: .init(output: output))
     }

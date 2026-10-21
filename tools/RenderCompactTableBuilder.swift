@@ -22,7 +22,8 @@ import SwiftUI
     let loaded = try String(contentsOf: url, encoding: .utf8); precondition(loaded == output)
     if format == .csv { let reopened = try SmallDataTools.tableCSV(Data(contentsOf: url)); precondition(reopened == saved) }
   }
-  for theme in VisualTheme.allCases {
+  let requestedTheme = ProcessInfo.processInfo.arguments.dropFirst().first
+  for theme in VisualTheme.allCases where requestedTheme == nil || theme.rawValue == requestedTheme {
    for format in SmallDataTools.Format.allCases {
     for expanded in [false, true, false] {
     let host = NSHostingView(rootView: ThemeRoot(override: theme, windowTitle: "表ビルダー") {
@@ -30,8 +31,9 @@ import SwiftUI
     }.defaultAppStorage(defaults))
     let size = NSSize(width: expanded ? 1100 : 420, height: (expanded ? 850 : 600) + (theme == .windows98 ? 30 : 0))
     let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+    window.appearance = NSAppearance(named: theme == .windows98 ? .aqua : .darkAqua)
     window.contentView = host; host.frame = NSRect(origin: .zero, size: size)
-    window.displayIfNeeded(); try await Task.sleep(for: .milliseconds(100)); host.layoutSubtreeIfNeeded()
+    window.displayIfNeeded(); try await Task.sleep(for: .milliseconds(450)); host.layoutSubtreeIfNeeded(); host.needsDisplay = true; host.display(); window.display()
     guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { fatalError("render") }
     host.cacheDisplay(in: host.bounds, to: rep)
     try rep.representation(using: .png, properties: [:])!.write(to: folder.appendingPathComponent("\(theme.rawValue)-\(format.rawValue)-\(expanded ? "expanded" : "compact").png"))

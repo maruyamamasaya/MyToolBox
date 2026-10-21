@@ -203,6 +203,7 @@ struct ToolLauncher: View {
         case .lineTools: return Color(red: 0.77, green: 0.48, blue: 0.09)
         case .stringReplacer: return Color(red: 0.89, green: 0.23, blue: 0.27)
         case .textCodec: return .cyan
+        case .videoCompressor: return .blue
         case .imageResizer: return .orange
         case .userAgent: return .cyan
         case .colorPalette: return .pink

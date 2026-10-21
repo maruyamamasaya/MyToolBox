@@ -18,7 +18,7 @@ enum ToolID: String, CaseIterable, Identifiable {
     case regexTester, regexBuilder, tableBuilder, csvStatistics
     case jsonWorkspace, logHighlighter, hashGenerator, testDataGenerator
     case cidrAnalyzer, dnsRecordBuilder, unitConverter, percentageCalculator, simpleCalculator, numberCalculator, cronReader, linuxCommands, chmodCalculator, directoryTree, unixTimeConverter
-    case randomNumberGenerator, portNumberFinder, httpStatusViewer, localMemo, systemMonitor, businessDays, audioCheck, microphoneCheck, csvViewer, csvEditor, sequentialText, clipboardFormatter, textCleaner, lineTools, stringReplacer, comparison, textCodec, colorPalette, userAgent, imageResizer, byteConverter, numberBaseConverter, bandwidthCalculator, raidCalculator, slaCalculator, pomodoroTimer, timerBoard, meetingTimer, timeCalculator
+    case randomNumberGenerator, portNumberFinder, httpStatusViewer, localMemo, systemMonitor, businessDays, audioCheck, microphoneCheck, csvViewer, csvEditor, sequentialText, clipboardFormatter, textCleaner, lineTools, stringReplacer, comparison, textCodec, colorPalette, userAgent, imageResizer, videoCompressor, byteConverter, numberBaseConverter, bandwidthCalculator, raidCalculator, slaCalculator, pomodoroTimer, timerBoard, meetingTimer, timeCalculator
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -73,6 +73,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .lineTools: return "行ツール"
         case .stringReplacer: return "検索・置換"
         case .textCodec: return "テキスト変換"
+        case .videoCompressor: return "動画圧縮"
         case .imageResizer: return "画像リサイズ"
         case .userAgent: return "User-Agent Viewer"
         case .colorPalette: return "カラーパレット"
@@ -132,6 +133,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .lineTools: return "並べ替え・行抽出・重複を確認"
         case .stringReplacer: return "文字列・正規表現・複数ルールで置換"
         case .textCodec: return "Base64・エスケープの変換と復元"
+        case .videoCompressor: return "複数動画をMP4に一括圧縮・容量削減"
         case .imageResizer: return "画像のサイズ変更・JPEG/PNG保存"
         case .userAgent: return "ブラウザ環境・端末情報の確認とコピー"
         case .colorPalette: return "120色・HEX/RGB・グラデーション・メモ"
@@ -191,6 +193,7 @@ enum ToolID: String, CaseIterable, Identifiable {
         case .lineTools: return "arrow.up.arrow.down"
         case .stringReplacer: return "text.magnifyingglass"
         case .textCodec: return "arrow.left.arrow.right"
+        case .videoCompressor: return "film"
         case .imageResizer: return "photo"
         case .userAgent: return "desktopcomputer"
         case .colorPalette: return "paintpalette"
@@ -208,7 +211,7 @@ extension ToolID {
         case .logHighlighter, .cidrAnalyzer, .dnsRecordBuilder, .cronReader, .linuxCommands, .chmodCalculator, .directoryTree, .unixTimeConverter: return .server
         case .jsonWorkspace, .hashGenerator, .testDataGenerator, .localMemo, .csvViewer, .csvEditor, .sequentialText, .clipboardFormatter, .textCleaner, .lineTools, .stringReplacer, .comparison, .textCodec: return .text
         case .randomNumberGenerator, .byteConverter, .numberBaseConverter, .bandwidthCalculator, .raidCalculator, .slaCalculator: return .calculation
-        case .colorPalette, .imageResizer: return .design
+        case .colorPalette, .imageResizer, .videoCompressor: return .design
         case .shortcutAudit, .windowManager, .portNumberFinder, .httpStatusViewer, .systemMonitor, .audioCheck, .microphoneCheck, .userAgent: return .system
         case .personalCalendar, .personalCountdown, .businessDays, .pomodoroTimer, .timerBoard, .meetingTimer, .timeCalculator: return .calendar
         }

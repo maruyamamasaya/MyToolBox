@@ -3,7 +3,13 @@ import AppKit
 @main struct RenderStatusStrip {
     @MainActor static func main() async throws {
         _ = NSApplication.shared
-        let store = MonitorStore(); store.suspend()
+        if !CommandLine.arguments.contains("--live-alert-preview") {
+            NSApplication.shared.setActivationPolicy(.prohibited)
+        }
+        let suite = "local.MyToolBox.render-status." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MonitorStore(defaults: defaults, managesBackgroundServices: false, startsAutomatically: false)
         let engine = MonitorEngine()
         _ = await engine.sample()
         try await Task.sleep(nanoseconds: 1_000_000_000)
@@ -20,7 +26,7 @@ import AppKit
         let livePreview = CommandLine.arguments.contains("--live-alert-preview")
         let alertFixture = CommandLine.arguments.contains("--alert-preview") || livePreview
         if alertFixture, var snapshot = store.snapshot {
-            // Display fixtures, not measurements: BAT/SSD/GPU temperature red, RAM/CPU temperature yellow.
+            // Display fixtures, not measurements: BAT/SSD red, RAM/CPU temperature yellow.
             snapshot.readings = [
                 Reading("battery", "BAT", ["残量": Metric(20, "%"), "電源接続": Metric(0), "充電中": Metric(0)]),
                 Reading("memory", "RAM", ["使用率": Metric(80, "%"), "プレッシャー": Metric(2)]),
@@ -67,7 +73,7 @@ import AppKit
         content.addSubview(background)
         view.frame.origin = NSPoint(x: 8, y: 4)
         background.addSubview(view)
-        let note = NSTextField(labelWithString: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? "「視差効果を減らす」が有効のため、赤は固定表示です。" : "BAT・SSD・GPU温度の赤に注目してください。")
+        let note = NSTextField(labelWithString: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? "「視差効果を減らす」が有効のため、赤は固定表示です。" : "BAT・SSDの赤に注目してください。")
         note.frame = NSRect(x: 20, y: 14, width: 520, height: 22)
         content.addSubview(note)
         window.center(); window.makeKeyAndOrderFront(nil)

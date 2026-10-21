@@ -13,14 +13,25 @@ import deploy
 class DeploymentTests(unittest.TestCase):
     def test_certificate_identity_checked_for_parent_and_every_helper(self):
         requirement = 'identifier "example" and anchor apple generic'
-        with patch.object(deploy, 'run', return_value=SimpleNamespace(stdout='', stderr='designated => ' + requirement)) as run:
+        with patch.object(deploy, 'installed_tools', return_value=list(deploy.tool_catalog())[:-1]), patch.object(deploy, 'run', return_value=SimpleNamespace(stdout='', stderr='designated => ' + requirement)) as run:
             deploy.validate_identity(Path('/new.app'), Path('/old.app'))
             checks = [call.args[0] for call in run.call_args_list if '-R' in call.args[0]]
-            self.assertEqual(len(checks), 1 + len(deploy.tool_catalog()))
+            self.assertEqual(len(checks), len(deploy.tool_catalog()))
             self.assertTrue(all(command[command.index('-R') + 1] == '=' + requirement for command in checks))
 
+    def test_installed_catalog_allows_new_tool_but_rejects_unknown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            app = Path(temp)
+            helpers = app / "Contents/Helpers"
+            helpers.mkdir(parents=True)
+            (helpers / "imageResizer.app").mkdir()
+            self.assertEqual(deploy.installed_tools(app), ["imageResizer"])
+            (helpers / "unknown.app").mkdir()
+            with self.assertRaises(RuntimeError):
+                deploy.installed_tools(app)
+
     def test_ad_hoc_identity_refused(self):
-        with patch.object(deploy, 'run', return_value=SimpleNamespace(stdout='', stderr='designated => cdhash H"1234"')):
+        with patch.object(deploy, 'installed_tools', return_value=[]), patch.object(deploy, 'run', return_value=SimpleNamespace(stdout='', stderr='designated => cdhash H"1234"')):
             with self.assertRaises(RuntimeError):
                 deploy.validate_identity(Path('/new.app'), Path('/old.app'))
 
@@ -47,7 +58,7 @@ class DeploymentTests(unittest.TestCase):
             if stops == stop_failure:
                 raise RuntimeError('app started during deployment')
 
-        def validate(app):
+        def validate(app, tools=None):
             nonlocal validations
             validations += 1
             if validations == validation_failure:
@@ -57,7 +68,7 @@ class DeploymentTests(unittest.TestCase):
             shutil.copytree(args[-2], args[-1])
 
         with patch.object(deploy, 'assert_stopped', stopped), patch.object(deploy, 'validate', validate), \
-                patch.object(deploy, 'validate_identity'), patch.object(deploy, 'run', copy):
+                patch.object(deploy, 'validate_identity'), patch.object(deploy, 'installed_tools', return_value=[]), patch.object(deploy, 'run', copy):
             try:
                 deploy.deploy(source, target, apply)
                 error = None

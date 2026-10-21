@@ -89,3 +89,5 @@ JSONツール・CSVビューワー／エディターも固有helperへ追加（�
 ウィンドウマネージャーは[専用常駐](decisions/0012-window-manager-service.md)。本体は保存済み設定ON・helper不在時だけ非表示起動し、登録とAX操作はhelperに限定する。画面を閉じてもONなら残り、明示終了時に登録を解放する。WindowManagerShortcuts.swiftがCarbon境界、WindowManagerModelは共有設定・競合時の希望状態・対象選択を管理。RenderWindowManagerは実キー／AX書込みなしでモデル・起動方針・4テーマを検証。[結果](sessions/2026-10-20-independent-window-manager.md)。
 
 全55カタログツールを[オンデマンドの独立helper](decisions/0013-all-independent-tools.md)へ統一（本番未反映）。IndependentTools.toolsはToolID.allCases、Python梱包・検証はtool_catalog.py経由で同じカタログを読む。通常は画面closeで終了、windowManagerのON時だけ常駐。モニターhelperは専用MonitorStoreで計測し、定期ログ・ログイン管理は本体のみ。日程調整の祝日・ツリーの既存設定・マイク用途文とentitlementも分離先へ継承。[検証記録](sessions/2026-10-20-all-independent-tools.md)。
+
+サーバー状態メニュー：本体AppDelegate → ServerMenuController（60秒・wake・手動、写真／音楽の2点表示）→ ServerManagementCollector。詳細画面と取得器を共用し、helperは自動監視を持たない。ServerIndicatorは150秒で結果を期限切れ扱いにする。[仕様](docs/SERVER_MANAGEMENT.md)。

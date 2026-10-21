@@ -102,8 +102,12 @@ struct CSVToolView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var model: CSVModel
     @State private var showPaste = false
+    init(model: CSVModel, initiallyShowingPaste: Bool = false) {
+        self.model = model; _showPaste = State(initialValue: initiallyShowingPaste)
+    }
     private var accent: Color { model.editable ? .orange : .blue }
     var body: some View {
+        GeometryReader { geometry in
         ToolPage(model.editable ? "CSVエディター" : "CSVビューワー", subtitle: model.editable ? "表で編集して、そのまま書き出す。" : "データを見渡す。探す。並べ替える。", symbol: model.editable ? "square.and.pencil" : "tablecells", tint: accent) {
             ScrollView {
             VStack(spacing: 14) {
@@ -145,7 +149,7 @@ struct CSVToolView: View {
                     VStack(spacing: 0) {
                         HStack { ToolSectionLabel(title: "データ", symbol: "tablecells"); Text("\(model.indices.count) 行 × \(model.width) 列").font(theme.font( 11, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("見出しで並べ替え / 境界で幅を調整").font(theme.font(10)).foregroundStyle(.tertiary) }.padding(12)
                         Divider()
-                        CSVGrid(model: model).frame(height: 320)
+                        CSVGrid(model: model).frame(height: Self.gridHeight(viewportHeight: geometry.size.height, editable: model.editable, pasteVisible: showPaste, cellEditorVisible: model.editable && model.rows.indices.contains(model.selectedRow) && model.width > model.selectedColumn))
                     }.background(theme.surfaceHigh, in: RoundedRectangle(cornerRadius: theme.classic ? 0 : 12)).overlay(RoundedRectangle(cornerRadius: theme.classic ? 0 : 12).strokeBorder(.primary.opacity(0.08)))
                     if model.editable {
                         HStack(spacing: 10) {
@@ -173,7 +177,8 @@ struct CSVToolView: View {
                 }.frame(minHeight: 22)
             }.padding(22)
             }
-        }.frame(minWidth: 940, minHeight: 780)
+        }
+        }.frame(minWidth: 940, idealWidth: 1200, minHeight: 780, idealHeight: 900)
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: nil) { providers in
             guard !model.busy, let provider = providers.first else { return false }
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
@@ -186,6 +191,10 @@ struct CSVToolView: View {
             return true
         }
     }
+    static func gridHeight(viewportHeight: CGFloat, editable: Bool, pasteVisible: Bool, cellEditorVisible: Bool) -> CGFloat {
+        max(320, viewportHeight - (editable ? 340 : 310) - (pasteVisible ? 220 : 0) - (cellEditorVisible ? 100 : 0))
+    }
+
 }
 struct CSVGrid: NSViewRepresentable {
     @Environment(\.appTheme) private var theme

@@ -31,6 +31,7 @@ import Combine
     private var monitorWindow: ToolWindow?
     private var radarStatus: NSStatusItem!
     private let rainRadar = RainRadarController()
+    private let serverMenu = ServerMenuController()
     private var weatherChanges: AnyCancellable?
     private var weatherAgeTimer: Timer?
     private var weatherWakeObserver: NSObjectProtocol?
@@ -101,6 +102,8 @@ import Combine
         weatherWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.rainRadar.weather.refresh(); self?.refreshWeatherStatus() }
         }
+        serverMenu.openDetails = { [weak self] in self?.toolWindows.show(.serverManagement) }
+        serverMenu.start()
         rainRadar.weather.startAutomaticUpdates()
         refreshWeatherStatus()
         // Login launches stay in the background; ordinary launches open the launcher.
@@ -187,6 +190,7 @@ import Combine
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply { toolWindows.canTerminate() ? .terminateNow : .terminateCancel }
     func applicationWillTerminate(_ notification: Notification) {
+        serverMenu.stop()
         rainRadar.weather.stopAutomaticUpdates()
         weatherAgeTimer?.invalidate()
         if let weatherWakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(weatherWakeObserver) }

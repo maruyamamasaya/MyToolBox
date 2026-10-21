@@ -18,7 +18,8 @@ import SwiftUI
          launch: @escaping @MainActor (ToolID, @escaping () -> Void) -> Void = { IndependentTools.open($0, completion: $1) },
          present: @escaping @MainActor (ToolWindow) -> Void = { controller in
              if IndependentTools.current != nil { NSApp.setActivationPolicy(.regular) }
-             controller.window?.center(); controller.showWindow(nil); NSApp.activate(ignoringOtherApps: true)
+             if controller.initiallyMaximized { controller.maximizeToVisibleScreen() } else { controller.window?.center() }
+             controller.showWindow(nil); NSApp.activate(ignoringOtherApps: true)
          },
          finishHelper: @escaping @MainActor (Bool) -> Void = { keepRunning in
              if keepRunning { NSApp.setActivationPolicy(.accessory) } else { NSApp.terminate(nil) }
@@ -114,6 +115,7 @@ import SwiftUI
             let model = CSVModel(editable: tool == .csvEditor)
             controller = makeWindow(title: tool.title, view: CSVToolView(model: model))
             controller.canClose = { model.confirmClose() }
+            controller.initiallyMaximized = true
         case .audioCheck:
             let model = SpeakerModel(); controller = makeWindow(title: tool.title, view: AudioCheckView(model: model)); controller.stopAudio = { model.stop(); model.status = "停止しました" }
         case .microphoneCheck:
@@ -135,6 +137,9 @@ import SwiftUI
             let model = TextCodecModel(); controller = makeWindow(title: tool.title, view: TextCodecView(model: model)); controller.cleanup = { model.stop() }
         case .comparison:
             let model = ComparisonModel(); controller = makeWindow(title: tool.title, view: ComparisonView(model: model)); controller.cleanup = { model.stop() }
+        case .videoCompressor:
+            let model = VideoCompressorModel(); controller = makeWindow(title: tool.title, view: VideoCompressorView(model: model))
+            controller.canClose = { !model.busy }; controller.cleanup = { model.stop() }
         case .imageResizer:
             let model = ImageResizerModel(); controller = makeWindow(title: tool.title, view: ImageResizerView(model: model)); controller.cleanup = { model.stop() }
         case .userAgent: controller = makeWindow(title: tool.title, view: UserAgentView())
@@ -163,6 +168,7 @@ import SwiftUI
     func stopAudio() { windows.values.forEach { $0.stopAudio() } }
 }
 @MainActor final class ToolWindow: NSWindowController, NSWindowDelegate {
+    var initiallyMaximized = false
     var canClose: () -> Bool = { true }
     var stopAudio: () -> Void = {}
     var cleanup: () -> Void = {}
@@ -175,6 +181,10 @@ import SwiftUI
         window.isReleasedWhenClosed = false
         super.init(window: window); window.delegate = self
         window.setContentSize(hosting.view.fittingSize)
+    }
+    func maximizeToVisibleScreen() {
+        guard let window, let screen = window.screen ?? NSScreen.main else { return }
+        window.setFrame(screen.visibleFrame, display: false)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is unsupported") }
     func windowShouldClose(_ sender: NSWindow) -> Bool { sender.makeFirstResponder(nil); return canClose() }

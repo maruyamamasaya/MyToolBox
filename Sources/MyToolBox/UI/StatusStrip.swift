@@ -95,11 +95,9 @@ import AppKit
                 let count = store.snapshot?.metric("sensors", "ファン数")?.value.flatMap { SensorsMonitor.fanCount($0) }
                 let fans = count.map { count in count > 0 ? (1...count).map { sensorNumber("ファン\($0)回転数") }.joined(separator: "/") : "—" } ?? (store.snapshot == nil ? "…" : "—")
                 var cpu = singleCell("CPU温度", "CPU " + sensorNumber("CPU温度"))
-                var gpu = singleCell("GPU温度", "GPU " + sensorNumber("GPU温度"))
                 cpu.bottomSeverity = levels["CPU温度"] ?? .normal
-                gpu.bottomSeverity = levels["GPU温度"] ?? .normal
                 fanCells = [makeCell("FAN", fans)]
-                temperatureCells = [cpu, gpu]
+                temperatureCells = [cpu]
                 return []
             }
             if id == "network" {
@@ -129,7 +127,7 @@ import AppKit
         cells += fanCells + memoryCells + temperatureCells
         updatePulse()
         setAccessibilityLabel("MyToolBox " + cells.map { $0.top + " " + $0.bottom + ($0.bottomSeverity == .critical ? " 要確認" : $0.bottomSeverity == .warning ? " 注意" : "") }.joined(separator: ", ") + "。クリックで詳細と設定")
-        toolTip = "MyToolBox — 上段↓受信／下段↑送信。MB/s表示の通信速度は黄色。監視値は注意時に黄色、要確認時に赤でゆっくり明滅（動きを減らす設定時は赤固定）。BATは電池駆動時50%以下で黄色、20%以下で赤。RAMは使用率、RAM残りは総容量−推定使用容量（10進GB、即時未使用freeとは異なる）、SSDは空き容量（10進GB・小数点以下切捨て）、⚡︎は充電中。CPU/GPU温度はセンサー平均、FANは番号順の実回転数（rpm）。— は取得不可、… は計測待ち。クリックで詳細と設定"
+        toolTip = "MyToolBox — 上段↓受信／下段↑送信。MB/s表示の通信速度は黄色。監視値は注意時に黄色、要確認時に赤でゆっくり明滅（動きを減らす設定時は赤固定）。BATは電池駆動時50%以下で黄色、20%以下で赤。RAMは使用率、RAM残りは総容量−推定使用容量（10進GB、即時未使用freeとは異なる）、SSDは空き容量（10進GB・小数点以下切捨て）、⚡︎は充電中。CPU温度はセンサー平均（GPU温度は詳細画面に表示）、FANは番号順の実回転数（rpm）。— は取得不可、… は計測待ち。クリックで詳細と設定"
         invalidateIntrinsicContentSize(); needsDisplay = true
     }
     override func draw(_ dirtyRect: NSRect) {

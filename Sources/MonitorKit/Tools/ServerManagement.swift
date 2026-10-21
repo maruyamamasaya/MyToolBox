@@ -1,11 +1,15 @@
 import Foundation
+import Darwin
 
 public enum ServerCheck: String, CaseIterable, Sendable, Identifiable {
-    case health, launchd, listener, tailscale, serve
+    case health, musicListener, musicLaunchd, musicLocalListener, launchd, listener, tailscale, serve
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .health: return "写真サーバー /health"
+        case .musicListener: return "音楽サーバー TCP 8768"
+        case .musicLaunchd: return "常駐サービス：MyMusic LAN Cardinal"
+        case .musicLocalListener: return "内部ポート TCP 8769"
         case .launchd: return "launchd：com.baby-media-web"
         case .listener: return "TCP 8080 の待受"
         case .tailscale: return "Tailscale 接続"
@@ -18,6 +22,9 @@ public enum ServerCheck: String, CaseIterable, Sendable, Identifiable {
         case .health: return ("/usr/bin/curl", ["--disable", "--noproxy", "*", "--proxy", "", "--silent", "--max-time", "3", "--output", "/dev/null", "--write-out", "%{http_code}", "http://127.0.0.1:8080/health"])
         // blame does not retrieve the job's environment, unlike launchctl print.
         case .launchd: return ("/bin/launchctl", ["blame", "system/com.baby-media-web"])
+        case .musicLaunchd: return ("/bin/launchctl", ["blame", "gui/\(getuid())/local.mymusic.cardinal-server"])
+        case .musicLocalListener: return ("/usr/sbin/lsof", ["-nP", "-a", "-iTCP:8769", "-sTCP:LISTEN", "-Fpcn"])
+        case .musicListener: return ("/usr/sbin/lsof", ["-nP", "-a", "-iTCP:8768", "-sTCP:LISTEN", "-Fpcn"])
         case .listener: return ("/usr/sbin/lsof", ["-nP", "-a", "-iTCP:8080", "-sTCP:LISTEN", "-Fpcn"])
         case .tailscale: return (cli, ["status", "--json", "--peers=false"])
         case .serve: return (cli, ["serve", "status", "--json"])
@@ -40,8 +47,9 @@ public struct ServerCheckReading: Sendable, Identifiable {
 /// One bounded, explicit scan. No timer, service control, credentials, or media access.
 public actor ServerManagementCollector {
     public init() {}
-    public func read() -> [ServerCheckReading] {
-        ServerCheck.allCases.map { item in
+    public func read(menuOnly: Bool = false) -> [ServerCheckReading] {
+        let items: [ServerCheck] = menuOnly ? [.health, .musicListener] : ServerCheck.allCases
+        return items.map { item in
             let (path, arguments) = item.command
             let environment = item == .tailscale || item == .serve ? ["TAILSCALE_BE_CLI": "1"] : [:]
             return Self.parse(item, result: SecurityCommand.run(path: path, arguments: arguments, environment: environment))
@@ -64,9 +72,30 @@ public actor ServerManagementCollector {
         case .health:
             guard output == "200" else { return reading(.attention, "期待した HTTP 200 応答を確認できません") }
             return reading(.confirmed, "127.0.0.1:8080/health → HTTP 200（ローカル到達性）")
-        case .launchd:
+        case .launchd, .musicLaunchd:
             guard !output.isEmpty else { return reading(.unavailable, "launchd の実行理由を取得できません") }
             return reading(.confirmed, "固定サービスの実行理由に応答あり（launchctl blame による参考情報）")
+        case .musicListener, .musicLocalListener:
+            let port = item == .musicListener ? 8768 : 8769
+            var exposed = false
+            var pid: Int?, name: String?
+            var expected = false, other = false
+            for line in output.split(separator: "\n").map(String.init) {
+                if line.hasPrefix("p") { pid = Int(line.dropFirst()); name = nil }
+                if line.hasPrefix("c") { name = String(line.dropFirst()) }
+                if line.hasPrefix("n"), line.hasSuffix(":\(port)"), let pid, pid > 0, let name {
+                    if item == .musicLocalListener && line != "n127.0.0.1:8769" && line != "n[::1]:8769" { exposed = true }
+                    if name == "Python" || name == "python3" || name.hasPrefix("python3.") { expected = true }
+                    else { other = true }
+                }
+            }
+            guard expected || other else { return reading(.unavailable, "TCP \(port) の待受を確認できません。停止とは断定できません") }
+            if item == .musicLocalListener {
+                return reading(expected && !other && !exposed ? .confirmed : .attention,
+                               expected && !other && !exposed ? "Python の TCP 8769 はこのMac内だけで待受。設定画面の内部用ポートです。8768とのPID一致・設定APIの動作は未確認" : "TCP 8769 のプロセスまたは待受範囲が想定と異なります")
+            }
+            return reading(expected && !other ? .confirmed : .attention,
+                           expected && !other ? "Python の TCP 8768 待受を確認。音楽再生・認証・別端末からの到達性は未確認" : "TCP 8768 に想定外のプロセスがあります")
         case .listener:
             var pid: Int?, name: String?, rows: [String] = []
             for line in output.split(separator: "\n").map(String.init) {
@@ -107,5 +136,15 @@ public actor ServerManagementCollector {
             return reading(https && proxy && !funnel ? .confirmed : .attention,
                            "HTTPS 443：\(https ? "設定あり" : "未確認") ／ ルート → 127.0.0.1:8080：\(proxy ? "設定あり" : "未確認")\nFunnel：\(funnel ? "有効な設定あり" : "有効な設定なし")（設定値の確認のみ）")
         }
+    }
+}
+
+/// Green is only a recent, successful reading; missing/stale data stays unknown.
+public enum ServerIndicator {
+    public static func state(for item: ServerCheck, readings: [ServerCheckReading], now: Date = Date()) -> ServerCheckState? {
+        guard let row = readings.first(where: { $0.item == item }),
+              now.timeIntervalSince(row.checkedAt) >= 0,
+              now.timeIntervalSince(row.checkedAt) <= 150 else { return nil }
+        return row.state
     }
 }

@@ -71,10 +71,10 @@ python3 scripts/load_probe.py loopback
 
 手順・合否基準・未実施一覧は[移行チェックリスト](docs/MIGRATION_CHECKLIST.md)。値の定義は[技術検証](docs/TECHNICAL_VALIDATION.md)。Computer Useは2回timeoutし、GUI操作確認は未検証。2段メニューバーのオフスクリーン描画検証は実デスクトップの目視とは区別する。
 
-オフスクリーンの2段表示確認（ユーザー設定を変更せず実サンプルで描画）：
+オフスクリーンの2段表示確認（隔離UserDefaults・自動監視／ログ開始なしで実サンプルを描画）：
 
 ```sh
-CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" xcrun swiftc -parse-as-library Sources/MonitorKit/Core/*.swift Sources/MonitorKit/Monitoring/*.swift Sources/MonitorKit/Utilities/*.swift Sources/MyToolBox/App/MonitorStore.swift Sources/MyToolBox/UI/StatusStrip.swift tools/RenderStatusStrip.swift -o build/render-status
+CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" xcrun swiftc -parse-as-library Sources/MonitorKit/Core/*.swift Sources/MonitorKit/Monitoring/*.swift Sources/MonitorKit/Utilities/*.swift Sources/MyToolBox/App/ToolCatalog.swift Sources/MyToolBox/Tools/IndependentTools.swift Sources/MyToolBox/App/MonitorStore.swift Sources/MyToolBox/UI/StatusStrip.swift tools/RenderStatusStrip.swift -o build/render-status
 build/render-status
 ```
 
@@ -297,6 +297,14 @@ Fullは全カタログhelperのID・実行ファイル・祝日・マイク用�
 
 `python3 scripts/test_deploy.py`：親不在の常駐helper・開発コピーによる配置拒否、事前検査の無変更、コピー中の起動による中止、配置検証失敗時の復旧、配置後起動時の旧版保持、成功時の整理を隔離フォルダで確認する。実プロセスの終了・本番配置はしない。
 
+## 動画圧縮
+
+`tools/VerifyVideoCompressor.swift`をVideoCompressor、CSVDocument、BusinessDays、VisualTheme、AppTheme／Theme*、ToolDesign、VideoCompressorViewとswiftcでコンパイルする。実MOV→MP4・縮小・失敗後継続・元動画保持・キャンセルと4テーマ非表示描画を検証。通常アプリの起動・配置は行わない。
+
 ## OS保護の検証
 
 `python3 scripts/test_protected_deploy.py` はリンク拒否・root所有境界・全プロセス停止・署名不一致拒否・新helper署名固定を通常権限で確認する。Fast／Fullに含む。実OSの拒否試験は管理者が初回導入する際、一時領域のfixtureにのみ実施する。実行不能なら導入済みと扱わない。[運用](docs/PROTECTED_DEPLOYMENT.md)。
+
+ディレクトリツリーの小窓・ドラッグ編集：`tools/VerifyCompactDirectoryTree.swift`を実モデル・Viewとコンパイルし、前／中／後の子項目移動、循環・ファイル・深さの拒否、ルート戻し、Undo/Redo、隔離UserDefaultsの再読込、4テーマの両サイズと7形式を検証。物理ドラッグ・自動スクロール・移動先の実マウス操作は別途実機確認する。
+
+サーバー管理カード：`tools/RenderServerManagement.swift`をVisualTheme・CSVDocument・BusinessDays・Security・ServerManagement・AppTheme／Theme*・ServerStatusImage・ToolDesign・ServerManagementViewと`-parse-as-library`でコンパイル。取得を無効化した実Viewに合成値を注入し、4テーマ×7状態（写真／音楽／両方の診断展開を含む）×幅440／800を非表示描画、枠への収まりとモデル状態保持を確認する。本番のクリック操作は別途確認。

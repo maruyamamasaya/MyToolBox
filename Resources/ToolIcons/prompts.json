@@ -51,7 +51,8 @@
     "slaCalculator": "A polished silver shield with a large green checkmark and a small orange clock badge.",
     "pomodoroTimer": "A bright red tomato-shaped kitchen timer with green leaf crown, simple white dial with two dark hands, no numbers.",
     "meetingTimer": "A white clock face behind three bold orange and silver human bust silhouettes arranged as a group.",
-    "timeCalculator": "A large white clock beside a small charcoal calculator with orange keys, no numbers."
+    "timeCalculator": "A large white clock beside a small charcoal calculator with orange keys, no numbers.",
+    "videoCompressor": "A large tactile silver film strip with a white play triangle and two orange arrows pointing inward to symbolize video compression."
   },
   "method": "built-in image_gen; transparent_background=true",
   "prototypes": {

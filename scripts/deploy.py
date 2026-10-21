@@ -36,13 +36,21 @@ def assert_stopped(processes=None):
                            'ウィンドウマネージャーは×では常駐するため⌘Qで終了します。\n' + '\n'.join(active))
 
 
-def validate(app):
-    validate_tool_apps(app)
+def installed_tools(app):
+    helpers = app / "Contents/Helpers"
+    names = {path.stem for path in helpers.glob("*.app")}
+    if not names or not names.issubset(tool_catalog()):
+        raise RuntimeError("既存helper一覧が不明です：" + str(app))
+    return sorted(names)
+
+
+def validate(app, tools=None):
+    validate_tool_apps(app, tools)
     run(['codesign', '--verify', '--deep', '--strict', str(app)])
 
 
 def validate_identity(source, target):
-    for relative in [Path('.')] + [Path('Contents/Helpers') / (tool + '.app') for tool in tool_catalog()]:
+    for relative in [Path('.')] + [Path('Contents/Helpers') / (tool + '.app') for tool in installed_tools(target)]:
         old = target / relative
         result = run(['codesign', '-d', '-r-', str(old)])
         text = result.stdout + result.stderr
@@ -68,7 +76,7 @@ def deploy(source, target, apply=False):
         raise RuntimeError('更新元と既存の配置先.appが必要です')
     assert_stopped()
     validate(source)
-    validate(target)
+    validate(target, installed_tools(target))
     validate_identity(source, target)
     if not apply:
         print('PASS: 停止・全helper・署名継続。配置する場合は --apply を指定してください。')

@@ -83,47 +83,58 @@ import SwiftUI
 struct SQLWorkspaceView: View {
     @ObservedObject var model: SQLWorkspaceModel
     @State private var confirmingReset = false
+    @State private var expanded: Bool
+    @State private var showsSettings = false
+    init(model: SQLWorkspaceModel, initiallyExpanded: Bool = false) {
+        self.model = model; _expanded = State(initialValue: initiallyExpanded)
+    }
     var body: some View {
-        ToolPage("SQLツール", subtitle: "SQLを整え、意味を確認し、一時DBで試す。", symbol: "cylinder.split.1x2", tint: .indigo) {
-            VStack(alignment: .leading, spacing: 12) {
-                Picker("操作", selection: $model.mode) {
-                    ForEach(SQLWorkspaceModel.Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }.pickerStyle(.segmented).disabled(model.busy)
-                TextEditor(text: $model.input).font(.system(.body, design: .monospaced)).frame(minHeight: 140, maxHeight: 230)
-                    .accessibilityLabel("SQL入力").disabled(model.busy)
-                HStack {
-                    Button(model.mode == .format ? "整形する" : model.mode == .explain ? "説明する" : "SQLを実行") { model.run() }
-                        .keyboardShortcut(.return, modifiers: .command).disabled(model.busy)
-                    if model.mode == .format {
-                        Picker("キーワード", selection: $model.uppercase) {
-                            Text("大文字").tag(true); Text("小文字").tag(false)
-                        }.frame(width: 190).disabled(model.busy)
-                    }
-                    Button("サンプル入力") { model.input = SQLMemoryDatabase.sampleQuery }.disabled(model.busy)
-                    Button("入力をクリア") { model.input = "" }.disabled(model.busy)
-                    Spacer()
-                    if model.busy { ProgressView().controlSize(.small) }
-                    Button(model.mode == .playground ? "結果をCSVコピー" : "結果をコピー") { model.copy() }
-                        .disabled(model.busy || model.copyText.isEmpty)
+        VStack(spacing: 10) {
+            HStack {
+                Label("SQLツール", systemImage: "cylinder.split.1x2").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 }
-                if !model.error.isEmpty { Text(model.error).foregroundStyle(.red).textSelection(.enabled) }
-                Text(model.status).font(.caption).foregroundStyle(.secondary)
-                results
-                if model.mode == .playground {
-                    HStack {
-                        DisclosureGroup("テーブル構成（employees／projectsで開始）") {
-                            ForEach(Array(model.schema.enumerated()), id: \.offset) { _, result in
-                                ForEach(Array(result.rows.enumerated()), id: \.offset) { _, row in
-                                    Text(row.compactMap { $0 }.joined(separator: "\n")).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                                }
-                            }
-                        }
-                        Button("DBを初期化") { confirmingReset = true }.disabled(model.busy)
-                    }
-                }
-                ToolFootnote(text: note)
-            }.padding(22)
-        }.frame(minWidth: 900, minHeight: 740)
+                ThemeMenu()
+            }
+            Picker("操作", selection: $model.mode) {
+                ForEach(SQLWorkspaceModel.Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented).disabled(model.busy)
+            HStack {
+                Text("SQL入力").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button { model.input = SQLMemoryDatabase.sampleQuery } label: {
+                    Image(systemName: "doc.text").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("サンプル入力").disabled(model.busy)
+                Button { model.input = "" } label: {
+                    Image(systemName: "trash").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("入力をクリア").disabled(model.busy)
+                Button { showsSettings.toggle() } label: {
+                    Image(systemName: "slider.horizontal.3").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("SQLの設定・テーブル構成").popover(isPresented: $showsSettings) { settings }
+            }
+            TextEditor(text: $model.input).font(.system(.body, design: .monospaced)).frame(height: expanded ? 240 : 150)
+                .accessibilityLabel("SQL入力").disabled(model.busy)
+            HStack {
+                Text(model.busy ? "処理中…" : model.status.isEmpty ? "結果" : model.status).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if model.busy { ProgressView().controlSize(.small) }
+            }
+            if !model.error.isEmpty { Text(model.error).font(.caption).foregroundStyle(.red).textSelection(.enabled).lineLimit(4) }
+            results.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+            HStack {
+                Button(model.mode == .format ? "整形する" : model.mode == .explain ? "説明する" : "SQLを実行") { model.run() }
+                    .keyboardShortcut(.return, modifiers: .command).disabled(model.busy)
+                Spacer()
+                Button(model.mode == .playground ? "CSVコピー" : "コピー", systemImage: "doc.on.doc") { model.copy() }
+                    .disabled(model.busy || model.copyText.isEmpty)
+            }
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 400, height: 600)))
+            .frame(minWidth: expanded ? 800 : 380, idealWidth: expanded ? 1100 : 400,
+                   minHeight: expanded ? 600 : 540, idealHeight: expanded ? 850 : 600)
         .onAppear { if model.schema.isEmpty { model.reset() } }
         .onChange(of: model.mode) { _, _ in model.error = ""; model.status = "" }
         .onChange(of: model.input) { _, _ in model.invalidate() }
@@ -132,56 +143,84 @@ struct SQLWorkspaceView: View {
             Button("初期化", role: .destructive) { model.reset() }
         }
     }
+    private var settings: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("SQLの設定・使い方").font(.headline)
+                if model.mode == .format {
+                    Picker("キーワード", selection: $model.uppercase) {
+                        Text("大文字").tag(true); Text("小文字").tag(false)
+                    }.disabled(model.busy)
+                }
+                Text(note).font(.caption).foregroundStyle(.secondary)
+                if model.mode == .playground {
+                    Divider()
+                    Text("テーブル構成").font(.headline)
+                    ForEach(Array(model.schema.enumerated()), id: \.offset) { _, result in
+                        ForEach(Array(result.rows.enumerated()), id: \.offset) { _, row in
+                            Text(row.compactMap { $0 }.joined(separator: "\n")).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                        }
+                    }
+                    Button("DBを初期化") { showsSettings = false; confirmingReset = true }.disabled(model.busy)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
+        }.frame(width: 330, height: model.mode == .playground ? 400 : 200)
+    }
     @ViewBuilder private var results: some View {
         switch model.mode {
         case .format:
-            ScrollView([.vertical, .horizontal]) {
-                Text(model.output.isEmpty ? "整形結果がここに表示されます。" : model.output)
-                    .font(.system(.body, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12)
-            }.frame(minHeight: 220)
+            GeometryReader { geometry in
+                ScrollView([.vertical, .horizontal]) {
+                    Text(model.output.isEmpty ? "整形結果がここに表示されます。" : model.output)
+                        .font(.system(.body, design: .monospaced)).textSelection(.enabled).padding(8)
+                        .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                }
+            }
         case .explain:
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(model.explanations.enumerated()), id: \.offset) { _, section in
-                        ToolCard {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(section.title).font(.headline)
-                                Text(section.source).font(.system(.body, design: .monospaced))
-                                Text(section.meaning).font(.callout).foregroundStyle(.secondary)
-                            }.textSelection(.enabled)
-                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(section.title).font(.headline)
+                            Text(section.source).font(.system(.body, design: .monospaced))
+                            Text(section.meaning).font(.callout).foregroundStyle(.secondary)
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                            .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6)).textSelection(.enabled)
                     }
                     if model.explanations.isEmpty { Text("基本的なSELECT文を句ごとに説明します。").foregroundStyle(.secondary) }
-                }
-            }.frame(minHeight: 220)
+                }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            }
         case .playground:
-            ScrollView([.vertical, .horizontal]) {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(Array(model.results.enumerated()), id: \.offset) { index, result in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("\(index + 1)文目 · \(result.columns.isEmpty ? "変更 \(result.changes)行" : "表示 \(result.rows.count)行")").font(.headline)
-                            if result.truncated { Text("先頭500行のみ表示しています。LIMITで絞り込めます。").foregroundStyle(.orange) }
-                            if !result.columns.isEmpty {
-                                HStack(alignment: .top, spacing: 1) {
-                                    ForEach(result.columns.indices, id: \.self) { column in
-                                        VStack(alignment: .leading, spacing: 0) {
-                                            Text(result.columns[column]).fontWeight(.bold).padding(7).frame(width: 175, alignment: .leading).background(.quaternary)
-                                            ForEach(result.rows.indices, id: \.self) { row in
-                                                Text(result.rows[row][column] ?? "NULL")
-                                                    .foregroundStyle(result.rows[row][column] == nil ? .secondary : .primary)
-                                                    .lineLimit(1).help(result.rows[row][column] ?? "NULL")
-                                                    .padding(7).frame(width: 175, height: 32, alignment: .leading)
-                                                    .background(row.isMultiple(of: 2) ? Color.primary.opacity(0.03) : .clear)
+            GeometryReader { geometry in
+                ScrollView([.vertical, .horizontal]) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(model.results.enumerated()), id: \.offset) { index, result in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("\(index + 1)文目 · \(result.columns.isEmpty ? "変更 \(result.changes)行" : "表示 \(result.rows.count)行")").font(.headline)
+                                if result.truncated { Text("先頭500行のみ表示しています。LIMITで絞り込めます。").foregroundStyle(.orange) }
+                                if !result.columns.isEmpty {
+                                    HStack(alignment: .top, spacing: 1) {
+                                        ForEach(result.columns.indices, id: \.self) { column in
+                                            VStack(alignment: .leading, spacing: 0) {
+                                                Text(result.columns[column]).fontWeight(.bold).padding(7)
+                                                    .frame(width: expanded ? 175 : 145, alignment: .leading).background(.quaternary)
+                                                ForEach(result.rows.indices, id: \.self) { row in
+                                                    Text(result.rows[row][column] ?? "NULL")
+                                                        .foregroundStyle(result.rows[row][column] == nil ? .secondary : .primary)
+                                                        .lineLimit(1).help(result.rows[row][column] ?? "NULL")
+                                                        .padding(7).frame(width: expanded ? 175 : 145, height: 32, alignment: .leading)
+                                                        .background(row.isMultiple(of: 2) ? Color.primary.opacity(0.03) : .clear)
+                                                }
                                             }
                                         }
-                                    }
-                                }.font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                                    }.font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                                }
                             }
                         }
-                    }
-                    if model.results.isEmpty { Text("SQLでテーブル作成・追加・更新・検索を試せます。").foregroundStyle(.secondary) }
-                }.padding(10)
-            }.frame(minHeight: 220)
+                        if model.results.isEmpty { Text("SQLでテーブル作成・追加・更新・検索を試せます。").foregroundStyle(.secondary) }
+                    }.padding(8).frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                }
+            }
         }
     }
     private var note: String {

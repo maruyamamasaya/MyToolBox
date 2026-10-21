@@ -218,56 +218,70 @@ struct CSVStatisticsView: View {
     @State private var error = ""
     @State private var status = ""
     @State private var busy = false
-    init(sample: Bool = false) {
-        _input = State(initialValue: sample ? "名前,数量,金額\nりんご,3,450\nみかん,5,500\nぶどう,NULL,800\nみかん,5,500" : "")
+    @State private var expanded: Bool
+    @State private var showsSettings = false
+    @State private var selectedColumn: Int
+    init(sample: Bool = false, initiallyExpanded: Bool = false, initialInput: String? = nil, initialColumn: Int = 0) {
+        _input = State(initialValue: initialInput ?? (sample ? "名前,数量,金額\nりんご,3,450\nみかん,5,500\nぶどう,NULL,800\nみかん,5,500" : ""))
+        _expanded = State(initialValue: initiallyExpanded); _selectedColumn = State(initialValue: initialColumn)
     }
     private var request: StatisticsRequest { .init(input: input, nullTokens: nullTokens, header: header, tabSeparated: tabSeparated) }
     var body: some View {
-        ToolPage("CSV統計", subtitle: "貼り付けて、欠損・重複・列の傾向をすばやく確認", symbol: "chart.bar.xaxis", tint: .cyan) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Button("CSVファイルを開く…", action: open)
-                        Button("サンプル") { input = "名前,数量,金額\nりんご,3,450\nみかん,5,500\nぶどう,NULL,800\nみかん,5,500" }
-                        Button("クリア") { input = ""; status = "" }
-                        Spacer()
-                        Button("統計結果をコピー") { copy() }.disabled(result == nil)
-                    }
-                    TextEditor(text: $input).font(.system(.body, design: .monospaced)).frame(height: 150).accessibilityLabel("統計対象のCSV")
-                    HStack {
-                        Toggle("1行目は見出し", isOn: $header)
-                        Toggle("タブ区切り", isOn: $tabSeparated)
-                        TextField("NULL扱いの値（カンマ区切り）", text: $nullTokens).textFieldStyle(.roundedBorder).accessibilityLabel("NULL扱いの値")
-                    }
-                    Text("空欄は常にNULL扱い。前後の空白を除去し、NULL指定は大文字小文字を区別しません。").font(.caption).foregroundStyle(.secondary)
-                    if busy { ProgressView("集計中…") }
-                    if !error.isEmpty { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
-                    if let result {
-                        ToolCard {
-                            HStack(spacing: 30) {
-                                metric("データ行", result.rows); metric("列", result.columns.count); metric("NULLセル", result.nulls); metric("重複行", result.duplicates)
-                            }
-                        }
-                        ForEach(result.columns.indices, id: \.self) { index in
-                            let column = result.columns[index]
-                            ToolCard {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    HStack { Text(column.name.isEmpty ? "列\(index + 1)（見出し空欄）" : column.name).font(.headline); Text(column.type).font(.caption).foregroundStyle(.secondary) }
-                                    Text("値 \(column.count)件 · NULL \(column.nulls)件（\(rate(column.nulls, result.rows))） · ユニーク \(column.unique)件（\(rate(column.unique, column.count))）")
-                                    Text("最頻値：" + (column.mode ?? "—")).textSelection(.enabled)
-                                    if column.mean != nil {
-                                        Text("合計 \(number(column.sum))　平均 \(number(column.mean))　中央値 \(number(column.median))")
-                                        Text("最小 \(number(column.minimum))　最大 \(number(column.maximum))")
-                                    }
-                                }.textSelection(.enabled)
-                            }
-                        }
-                    }
-                    Text(status).font(.caption).foregroundStyle(.secondary)
-                    ToolFootnote(text: "最大512KiB・1,000データ行・30列。数値集計はNULL以外がすべて有限の数値である列が対象。重複は先頭を除く完全一致行数。端末内で処理し保存しません。")
-                }.padding(22)
+        VStack(spacing: 10) {
+            HStack {
+                Label("CSV統計", systemImage: "chart.bar.xaxis").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                ThemeMenu()
             }
-        }.frame(minWidth: 850, idealWidth: 950, minHeight: 720)
+            HStack {
+                Button(action: open) { Image(systemName: "folder").frame(width: 24, height: 24).contentShape(Rectangle()) }.accessibilityLabel("CSVファイルを開く")
+                Button("サンプル") { input = "名前,数量,金額\nりんご,3,450\nみかん,5,500\nぶどう,NULL,800\nみかん,5,500"; status = "" }
+                Button { input = ""; status = "" } label: { Image(systemName: "trash").frame(width: 24, height: 24).contentShape(Rectangle()) }.accessibilityLabel("入力をクリア")
+                Spacer()
+                Button { showsSettings.toggle() } label: { Image(systemName: "slider.horizontal.3").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("CSV統計の設定").popover(isPresented: $showsSettings) { settings }
+            }
+            TextEditor(text: $input).font(.system(.body, design: .monospaced)).frame(height: expanded ? 180 : 100).accessibilityLabel("統計対象のCSV")
+            if busy { ProgressView("集計中…") }
+            if !error.isEmpty {
+                ScrollView { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).frame(maxWidth: .infinity, alignment: .leading) }
+            } else if let result {
+                HStack(spacing: 8) {
+                    metric("データ行", result.rows); metric("列", result.columns.count)
+                    metric("NULLセル", result.nulls); metric("重複行", result.duplicates)
+                }.padding(8).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+                if !expanded {
+                    Picker("列", selection: $selectedColumn) {
+                        ForEach(result.columns.indices, id: \.self) { index in
+                            Text(columnName(result.columns[index], index)).tag(index)
+                        }
+                    }
+                }
+                ScrollView {
+                    if expanded {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), alignment: .top)], alignment: .leading, spacing: 10) {
+                            ForEach(result.columns.indices, id: \.self) { index in columnDetails(result.columns[index], index, total: result.rows) }
+                        }
+                    } else if result.columns.indices.contains(selectedColumn) {
+                        columnDetails(result.columns[selectedColumn], selectedColumn, total: result.rows)
+                    }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                Text(busy ? "集計中…" : input.isEmpty ? "CSVを貼り付けるか、ファイルを開いてください" : "集計を準備しています…")
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            HStack {
+                Button("統計をコピー", systemImage: "doc.on.doc", action: copy).disabled(result == nil)
+                Spacer()
+                if !status.isEmpty { Text(status).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+            }
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 400, height: 600)))
+            .frame(minWidth: expanded ? 800 : 380, idealWidth: expanded ? 1100 : 400,
+                   minHeight: expanded ? 600 : 540, idealHeight: expanded ? 850 : 600)
             .task(id: request) {
                 let value = request
                 result = nil; error = ""; busy = false
@@ -279,11 +293,43 @@ struct CSVStatisticsView: View {
                 }.value
                 guard !Task.isCancelled else { return }
                 busy = false
-                switch calculated { case .success(let output): result = output; case .failure(let failure): error = failure.localizedDescription }
+                switch calculated { case .success(let output): result = output; selectedColumn = min(max(0, selectedColumn), max(0, output.columns.count - 1)); case .failure(let failure): error = failure.localizedDescription }
             }
     }
+    private var settings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("集計設定").font(.headline)
+            Toggle("1行目は見出し", isOn: $header)
+            Toggle("タブ区切り", isOn: $tabSeparated)
+            TextField("NULL扱いの値（カンマ区切り）", text: $nullTokens).textFieldStyle(.roundedBorder).accessibilityLabel("NULL扱いの値")
+            Text("空欄は常にNULL扱い。前後の空白を除去し、NULL指定は大文字小文字を区別しません。")
+                .font(.caption).foregroundStyle(.secondary)
+            Text("最大512KiB・1,000データ行・30列。数値集計はNULL以外がすべて有限の数値である列のみ。重複は先頭を除く完全一致行数。端末内で処理し保存しません。")
+                .font(.caption).foregroundStyle(.secondary)
+        }.padding(16).frame(width: 310)
+    }
+    private func columnName(_ column: SmallDataTools.Column, _ index: Int) -> String {
+        "\(index + 1). " + (column.name.isEmpty ? "（見出し空欄）" : column.name)
+    }
+    private func columnDetails(_ column: SmallDataTools.Column, _ index: Int, total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack { Text(columnName(column, index)).font(.headline); Spacer(); Text(column.type).font(.caption).foregroundStyle(.secondary) }
+            detailRow("値", "\(column.count)件")
+            detailRow("NULL", "\(column.nulls)件（\(rate(column.nulls, total))）")
+            detailRow("ユニーク", "\(column.unique)件（\(rate(column.unique, column.count))）")
+            detailRow("最頻値", column.mode ?? "—")
+            if column.mean != nil {
+                Divider()
+                detailRow("合計", number(column.sum)); detailRow("平均", number(column.mean))
+                detailRow("中央値", number(column.median)); detailRow("最小", number(column.minimum)); detailRow("最大", number(column.maximum))
+            }
+        }.padding(10).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6)).textSelection(.enabled)
+    }
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .top) { Text(title).foregroundStyle(.secondary); Spacer(minLength: 8); Text(value).multilineTextAlignment(.trailing) }
+    }
     private func metric(_ label: String, _ value: Int) -> some View {
-        VStack(alignment: .leading) { Text(label).font(.caption).foregroundStyle(.secondary); Text(String(value)).font(.title2.bold()) }
+        VStack(alignment: .leading, spacing: 3) { Text(label).font(.caption).foregroundStyle(.secondary); Text(String(value)).font(.title3.bold()) }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func number(_ value: Double?) -> String { value.map { String(format: "%.10g", $0) } ?? "—" }
     private func rate(_ count: Int, _ total: Int) -> String { total > 0 ? String(format: "%.1f%%", Double(count) / Double(total) * 100) : "—" }

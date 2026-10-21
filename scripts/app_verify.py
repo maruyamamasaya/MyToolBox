@@ -22,8 +22,8 @@ def validate_signing_transition(installed_requirement, built_requirement):
     if not is_ad_hoc(installed_requirement) and is_ad_hoc(built_requirement):
         raise RuntimeError('installed app uses a certificate; restore .local-signing.xcconfig before updating (ad hoc fallback refused)')
 
-def validate_tool_apps(app):
-    for tool in tool_catalog():
+def validate_tool_apps(app, tools=None):
+    for tool in (tool_catalog() if tools is None else tools):
         contents = app / 'Contents/Helpers' / (tool + '.app') / 'Contents'
         if not (contents / 'MacOS/MyToolBox').is_file():
             raise RuntimeError(f'helper executable missing: {tool}')
