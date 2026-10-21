@@ -192,6 +192,10 @@ struct DurationFields: View {
     @Published var isBreak = false
     @Published var status = "時間を選んで開始してください"
     @Published var completed = 0
+    @Published var breakCelebrationAt: Date?
+    @Published var breakFinishedAt: Date?
+    @Published var breakEffects: Bool { didSet { defaults.set(breakEffects, forKey: "tools.pomodoro.breakEffects") } }
+    @Published var breakSound: Bool { didSet { defaults.set(breakSound, forKey: "tools.pomodoro.breakSound") } }
     var workMinutes = 25
     var breakMinutes = 5
     let pomodoro: Bool
@@ -199,6 +203,8 @@ struct DurationFields: View {
     private let defaults: UserDefaults
     init(pomodoro: Bool, defaults: UserDefaults = IndependentTools.defaults) {
         self.pomodoro = pomodoro; self.defaults = defaults
+        breakEffects = defaults.object(forKey: "tools.pomodoro.breakEffects") as? Bool ?? true
+        breakSound = defaults.bool(forKey: "tools.pomodoro.breakSound")
         if pomodoro {
             workMinutes = max(1, min(180, defaults.object(forKey: "tools.pomodoro.work") as? Int ?? 25))
             breakMinutes = max(1, min(60, defaults.object(forKey: "tools.pomodoro.rest") as? Int ?? 5))
@@ -222,15 +228,31 @@ struct DurationFields: View {
             if !isBreak {
                 completed += 1; defaults.set(dayKey, forKey: "tools.pomodoro.day"); defaults.set(completed, forKey: "tools.pomodoro.count")
             }
+            if isBreak {
+                breakFinishedAt = date
+                breakCelebrationAt = nil
+                if breakSound { NSSound(named: "Pop")?.play() }
+            }
             isBreak.toggle(); timer.reset(); timer.duration = Double((isBreak ? breakMinutes : workMinutes) * 60)
             status = isBreak ? "作業完了。休憩を開始できます" : "休憩完了。次の作業を開始できます"
         } else { status = "会議時間が終了しました" }
     }
-    func toggle() {
-        if timer.startedAt != nil { timer.pause(at: Date()); status = "一時停止中" }
-        else { if timer.finished(at: Date()) { timer.reset() }; timer.start(at: Date()); status = pomodoro ? (isBreak ? "休憩中" : "集中中") : "会議中" }
+    func toggle(at date: Date = Date()) {
+        now = date
+        if timer.startedAt != nil { timer.pause(at: date); status = "一時停止中" }
+        else {
+            if timer.finished(at: date) { timer.reset() }
+            if pomodoro && isBreak && timer.elapsed == 0 { breakCelebrationAt = date }
+            breakFinishedAt = nil
+            timer.start(at: date)
+            status = pomodoro ? (isBreak ? "休憩中" : "集中中") : "会議中"
+        }
     }
-    func reset() { timer.reset(); isBreak = false; if pomodoro { timer.duration = Double(workMinutes * 60) }; status = "時間を選んで開始してください" }
+    func reset() {
+        timer.reset(); isBreak = false; breakCelebrationAt = nil; breakFinishedAt = nil
+        if pomodoro { timer.duration = Double(workMinutes * 60) }
+        status = "時間を選んで開始してください"
+    }
     func configure(work: Int, rest: Int) {
         workMinutes = work; breakMinutes = rest
         defaults.set(work, forKey: "tools.pomodoro.work"); defaults.set(rest, forKey: "tools.pomodoro.rest"); reset()
@@ -318,6 +340,7 @@ struct CompactMeetingTimerView: View {
 struct CompactPomodoroView: View {
     @ObservedObject var model: FocusTimerModel
     @State private var showsSettings = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var work = 25
     @State private var rest = 5
     private var remaining: String {
@@ -338,6 +361,8 @@ struct CompactPomodoroView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Stepper("作業 \(work)分", value: $work, in: 1...180)
                             Stepper("休憩 \(rest)分", value: $rest, in: 1...60)
+                            Toggle("花火・終了の光", isOn: $model.breakEffects)
+                            Toggle("休憩終了の音", isOn: $model.breakSound)
                             HStack {
                                 ThemeMenu()
                                 Spacer()
@@ -355,7 +380,9 @@ struct CompactPomodoroView: View {
                 .monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
                 .accessibilityLabel("残り時間 \(remaining)")
             ProgressView(value: model.timer.duration > 0 ? min(1, model.timer.elapsed(at: model.now) / model.timer.duration) : 0)
-            Text(model.status == "時間を選んで開始してください" ? "準備完了" : model.status)
+            Text(model.isBreak && model.timer.startedAt != nil
+                 ? "画面から目を離して、ひと息つこう"
+                 : model.status == "時間を選んで開始してください" ? "準備完了" : model.status)
                 .font(.caption).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -366,6 +393,52 @@ struct CompactPomodoroView: View {
             }
         }
         .padding(10).controlSize(.small)
+        .background {
+            if model.isBreak {
+                RoundedRectangle(cornerRadius: 12).fill(Color.cyan.opacity(0.06))
+            }
+        }
+        .overlay {
+            if model.breakEffects && !reduceMotion {
+                if model.isBreak, let start = model.breakCelebrationAt,
+                   model.now.timeIntervalSince(start) < 3 {
+                    PomodoroFireworks(start: start)
+                }
+                if let end = model.breakFinishedAt, model.now.timeIntervalSince(end) < 2 {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.cyan.opacity(max(0, 1 - model.now.timeIntervalSince(end) / 2)), lineWidth: 2)
+                        .padding(2).allowsHitTesting(false).accessibilityHidden(true)
+                }
+            }
+        }
         .frame(minWidth: 240, idealWidth: 260, minHeight: 210, idealHeight: 210)
+    }
+}
+
+/// A short, silent burst. The timeline exists only during the three-second celebration.
+struct PomodoroFireworks: View {
+    let start: Date
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
+            Canvas { context, size in
+                let elapsed = timeline.date.timeIntervalSince(start)
+                for burst in 0..<3 {
+                    let age = elapsed - Double(burst) * 0.45
+                    if age >= 0 && age < 1.8 {
+                        let progress = age / 1.8
+                        let center = CGPoint(x: size.width * [0.22, 0.76, 0.48][burst],
+                                             y: size.height * [0.32, 0.26, 0.48][burst])
+                        for spark in 0..<18 {
+                            let angle = Double(spark) * .pi * 2 / 18
+                            let radius = (1 - pow(1 - progress, 3)) * 45
+                            let point = CGPoint(x: center.x + cos(angle) * radius,
+                                                y: center.y + sin(angle) * radius + progress * progress * 16)
+                            let rect = CGRect(x: point.x - 1.5, y: point.y - 1.5, width: 3, height: 3)
+                            context.fill(Path(ellipseIn: rect), with: .color((burst == 1 ? Color.blue : Color.cyan).opacity((1 - progress) * 0.85)))
+                        }
+                    }
+                }
+            }
+        }.allowsHitTesting(false).accessibilityHidden(true).clipped()
     }
 }

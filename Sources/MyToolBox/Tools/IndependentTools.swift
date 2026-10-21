@@ -26,6 +26,42 @@ enum IndependentTools {
     static func running(_ tool: ToolID) -> NSRunningApplication? {
         NSRunningApplication.runningApplications(withBundleIdentifier: identifier(tool)).first { !$0.isTerminated }
     }
+    /// Request normal termination so each helper retains its unsaved-document guards.
+    @MainActor static func closeRunningTools() {
+        let runningTools = ToolID.allCases.flatMap { tool in
+            NSRunningApplication.runningApplications(withBundleIdentifier: identifier(tool))
+                .filter { !$0.isTerminated }.map { (tool, $0) }
+        }
+        guard !runningTools.isEmpty else {
+            let alert = NSAlert(); alert.messageText = "起動中のツールはありません"
+            alert.runModal(); return
+        }
+        let timers: Set<ToolID> = [.timerBoard, .pomodoroTimer, .meetingTimer]
+        let timerNames = runningTools.filter { timers.contains($0.0) }.map { $0.0.title }
+        var includeTimers = false
+        if !timerNames.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "タイマーも終了しますか？"
+            alert.informativeText = timerNames.joined(separator: "・") + "が開いています。終了すると計測と通知が止まります。"
+            alert.addButton(withTitle: "タイマーを残して終了")
+            alert.addButton(withTitle: "すべて終了")
+            alert.addButton(withTitle: "キャンセル")
+            switch alert.runModal() {
+            case .alertFirstButtonReturn: break
+            case .alertSecondButtonReturn: includeTimers = true
+            default: return
+            }
+        }
+        var failures: [String] = []
+        for (tool, app) in runningTools where includeTimers || !timers.contains(tool) {
+            if !app.isTerminated && !app.terminate() { failures.append(tool.title) }
+        }
+        if !failures.isEmpty {
+            let alert = NSAlert(); alert.messageText = "終了を要求できなかったツールがあります"
+            alert.informativeText = failures.joined(separator: "・")
+            alert.runModal()
+        }
+    }
     @MainActor static func open(_ tool: ToolID, activate: Bool = true, completion: @escaping () -> Void) {
         let url = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/\(tool.rawValue).app")
         guard FileManager.default.fileExists(atPath: url.path) else {

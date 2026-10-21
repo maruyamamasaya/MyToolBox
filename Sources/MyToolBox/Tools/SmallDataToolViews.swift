@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct TableBuilderView: View {
-    @StateObject private var table = CSVModel(editable: true)
+    @StateObject private var table: CSVModel
     @StateObject private var fileWindow = TableFileWindowHandle()
     @State private var filePanelActive = false
     @State private var input = ""
@@ -12,56 +12,122 @@ struct TableBuilderView: View {
     @State private var alignment: SmallDataTools.Alignment = .left
     @State private var status = ""
     private var output: String { SmallDataTools.export(table.rows, format: format, header: header, alignment: alignment) }
+    @State private var expanded: Bool
+    @State private var showsSettings = false
+    @State private var showsImport = false
+    init(model: CSVModel? = nil, initiallyExpanded: Bool = false, initialFormat: SmallDataTools.Format = .markdown) {
+        let actual = model ?? CSVModel(editable: true)
+        if model == nil { actual.rows = [["項目", "数量", "メモ"], ["りんご", "3", "青森"], ["みかん", "5", "愛媛"]] }
+        _table = StateObject(wrappedValue: actual)
+        _expanded = State(initialValue: initiallyExpanded); _format = State(initialValue: initialFormat)
+    }
     var body: some View {
-        ToolPage("表ビルダー", subtitle: "セルを編集して、Markdown・HTML・CSVへ", symbol: "tablecells.badge.ellipsis", tint: .teal) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    DisclosureGroup("CSV・タブ区切りを貼り付けて取り込む") {
-                        TextEditor(text: $input).font(.system(.body, design: .monospaced)).frame(height: 100).accessibilityLabel("表の取り込み")
-                        HStack {
-                            Toggle("タブ区切り", isOn: $tabSeparated)
-                            Button("取り込む") { load() }
-                        }
-                    }
-                    HStack {
-                        Button("CSVファイルを開く…", action: openCSV).disabled(filePanelActive)
-                        Text("\(table.rows.count)行 × \(table.width)列").font(.headline)
-                        Spacer()
-                        Button("サンプル") { replace(sample) }
-                        Button("クリア") { replace([["", ""], ["", ""]]) }
-                    }
-                    Text("セルをダブルクリックして編集。削除する行・列は下で選択できます。").font(.caption).foregroundStyle(.secondary)
-                    CSVGrid(model: table).frame(height: 230)
-                    HStack {
-                        Button("＋行") { table.finishEditing(); table.rows.append(Array(repeating: "", count: table.width)); table.dirty = true }.disabled(table.rows.count >= 100)
-                        Button("＋列") { table.finishEditing(); for index in table.rows.indices { table.rows[index].append("") }; table.dirty = true }.disabled(table.width >= 30)
-                        Picker("行", selection: $table.selectedRow) {
-                            Text("選択").tag(-1)
-                            ForEach(table.rows.indices, id: \.self) { Text("\($0 + 1)").tag($0) }
-                        }.frame(width: 120)
-                        Button("行を削除") { table.finishEditing(); guard table.rows.indices.contains(table.selectedRow) else { return }; table.rows.remove(at: table.selectedRow); table.selectedRow = -1; table.dirty = true }.disabled(table.rows.count <= 1 || table.selectedRow < 0)
-                        Picker("列", selection: $table.selectedColumn) {
-                            ForEach(0..<table.width, id: \.self) { Text("\($0 + 1)").tag($0) }
-                        }.frame(width: 100)
-                        Button("列を削除") { table.finishEditing(); guard (0..<table.width).contains(table.selectedColumn) else { return }; for index in table.rows.indices { table.rows[index].remove(at: table.selectedColumn) }; table.selectedColumn = 0; table.dirty = true }.disabled(table.width <= 1)
-                    }
-                    HStack {
-                        Toggle("1行目を見出しにする", isOn: $header)
-                        Picker("文字揃え", selection: $alignment) { ForEach(SmallDataTools.Alignment.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 230)
-                    }
-                    Picker("出力形式", selection: $format) { ForEach(SmallDataTools.Format.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
-                    ToolCard { ScrollView([.horizontal, .vertical]) { Text(output).font(.system(.body, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 160) }
-                    HStack {
-                        Button("コピー") { table.finishEditing(); NSPasteboard.general.clearContents(); status = NSPasteboard.general.setString(output, forType: .string) ? "コピーしました" : "コピーできませんでした" }
-                        Button("ファイルを保存…", action: save).disabled(filePanelActive)
-                        Text(status).font(.caption).foregroundStyle(.secondary)
-                    }
-                    ToolFootnote(text: "最大100行・30列。再編集する場合はCSVで保存し、「CSVファイルを開く」で読み込めます。編集中の表は自動保存されません。必要な内容はコピーまたは保存してください。取り込み・サンプル・クリアは編集中の内容を置き換えます。")
-                }.padding(22)
+        VStack(spacing: 10) {
+            HStack {
+                Label("表ビルダー", systemImage: "tablecells").font(.headline)
+                Spacer()
+                Button { table.finishEditing(); expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }.disabled(filePanelActive)
+                ThemeMenu()
             }
-        }.frame(minWidth: 940, idealWidth: 1000, minHeight: 820)
+            HStack(spacing: 8) {
+                Button(action: openCSV) { Image(systemName: "folder").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("CSVファイルを開く").disabled(filePanelActive)
+                Button { table.finishEditing(); showsImport.toggle() } label: {
+                    Image(systemName: "square.and.arrow.down").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("テキストを取り込む").popover(isPresented: $showsImport) { importPanel }
+                Menu {
+                    Button("サンプル") { replace(sample) }
+                    Button("クリア") { replace([["", ""], ["", ""]]) }
+                } label: { Image(systemName: "ellipsis").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("表のサンプル・クリア")
+                Spacer(minLength: 0)
+                Text("\(table.rows.count)行 × \(table.width)列").font(.caption).foregroundStyle(.secondary)
+                Button { table.finishEditing(); showsSettings.toggle() } label: {
+                    Image(systemName: "slider.horizontal.3").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("表の設定・行列削除").popover(isPresented: $showsSettings) { settings }
+            }
+            Text("セルをダブルクリックして編集").font(.caption).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            CSVGrid(model: table).frame(minHeight: 150, maxHeight: .infinity)
+            HStack {
+                Button("行を追加", systemImage: "plus") {
+                    table.finishEditing(); table.rows.append(Array(repeating: "", count: max(1, table.width))); table.dirty = true
+                }.disabled(table.rows.count >= 100)
+                Button("列を追加", systemImage: "plus") {
+                    table.finishEditing(); for index in table.rows.indices { table.rows[index].append("") }; table.dirty = true
+                }.disabled(table.width >= 30 || table.rows.isEmpty)
+                Spacer(minLength: 0)
+            }
+            Picker("出力形式", selection: $format) {
+                ForEach(SmallDataTools.Format.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented).onChange(of: format) { _, _ in table.finishEditing() }
+            GeometryReader { geometry in
+                ScrollView([.horizontal, .vertical]) {
+                    Text(output).font(.system(.body, design: .monospaced)).textSelection(.enabled).padding(8)
+                        .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+                }
+            }.frame(height: expanded ? 220 : 110).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+            HStack {
+                Button("コピー", systemImage: "doc.on.doc") {
+                    table.finishEditing(); NSPasteboard.general.clearContents()
+                    status = NSPasteboard.general.setString(output, forType: .string) ? "コピーしました" : "コピーできませんでした"
+                }
+                Button("保存…", systemImage: "square.and.arrow.down", action: save).disabled(filePanelActive)
+                Spacer(minLength: 0)
+            }
+            if !status.isEmpty { Text(status).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading) }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: expanded ? 800 : 400, idealWidth: expanded ? 1100 : 420,
+                   minHeight: expanded ? 600 : 540, idealHeight: expanded ? 850 : 600)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 420, height: 600)))
             .background(TableFileWindowBridge(handle: fileWindow).frame(width: 0, height: 0))
-            .onAppear { if table.rows.isEmpty { table.rows = sample } }
+    }
+    private var importPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("テキストを取り込む").font(.headline)
+            TextEditor(text: $input).font(.system(.body, design: .monospaced)).frame(height: 140).accessibilityLabel("表の取り込み")
+            HStack {
+                Toggle("タブ区切り", isOn: $tabSeparated)
+                Spacer()
+                Button("取り込む") { load() }
+            }
+            Text("CSV・TSV、512KiB・100行・30列まで。取り込みは現在の表を置き換えます。")
+                .font(.caption).foregroundStyle(.secondary)
+        }.padding(16).frame(width: 330)
+    }
+    private var settings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("表の設定").font(.headline)
+            Toggle("1行目を見出しにする", isOn: $header)
+            Picker("文字揃え", selection: $alignment) {
+                ForEach(SmallDataTools.Alignment.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            Divider()
+            HStack {
+                Picker("行", selection: $table.selectedRow) {
+                    Text("選択").tag(-1)
+                    ForEach(table.rows.indices, id: \.self) { Text("\($0 + 1)").tag($0) }
+                }
+                Button("行を削除") {
+                    table.finishEditing(); guard table.rows.indices.contains(table.selectedRow) else { return }
+                    table.rows.remove(at: table.selectedRow); table.selectedRow = -1; table.dirty = true
+                }.disabled(table.rows.count <= 1 || !table.rows.indices.contains(table.selectedRow))
+            }
+            HStack {
+                Picker("列", selection: $table.selectedColumn) {
+                    ForEach(0..<table.width, id: \.self) { Text("\($0 + 1)").tag($0) }
+                }
+                Button("列を削除") {
+                    table.finishEditing(); guard (0..<table.width).contains(table.selectedColumn) else { return }
+                    for index in table.rows.indices { table.rows[index].remove(at: table.selectedColumn) }
+                    table.selectedColumn = 0; table.dirty = true
+                }.disabled(table.width <= 1)
+            }
+            Text("最大100行・30列。再編集にはCSVで保存してください。自動保存はしません。見出し・文字揃えはCSV出力には影響しません。")
+                .font(.caption).foregroundStyle(.secondary)
+        }.padding(16).frame(width: 310)
     }
     private var sample: [[String]] { [["項目", "数量", "メモ"], ["りんご", "3", "青森"], ["みかん", "5", "愛媛"]] }
     @discardableResult private func replace(_ rows: [[String]]) -> Bool {
@@ -74,7 +140,7 @@ struct TableBuilderView: View {
         do {
             let rows = try SmallDataTools.parse(input, delimiter: tabSeparated ? "\t" : ",")
             guard rows.count <= 100 else { throw ToolFailure.message("表ビルダーは100行までです。") }
-            replace(rows)
+            if replace(rows) { showsImport = false }
         } catch { status = error.localizedDescription }
     }
     private func openCSV() {
@@ -105,6 +171,7 @@ struct TableBuilderView: View {
         guard let window = fileWindow.window else { status = "表のウィンドウが見つかりません。開き直してください。"; return }
         window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
         window.makeFirstResponder(nil)
+        table.finishEditing()
         let contents = output
         guard format != .csv || contents.utf8.count <= 524_288 else {
             status = "CSVは再読み込み可能な512KiB以内にしてください。"; return

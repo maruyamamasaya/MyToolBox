@@ -134,3 +134,9 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [カレンダーの日本語表記・日付マスの枠線](2026-10-16-03-calendar-japanese-borders.md)
 
 - [画像の複数選択・一括リサイズ](2026-10-16-04-image-batch.md)
+
+- [独立ツールの一括終了ボタン](2026-10-21-bulk-close-tools.md)
+
+- [2026-10-21：ポモドーロの休憩演出](2026-10-21-pomodoro-break-effects.md)
+
+- [2026-10-21：ウィンドウ配置のデプロイ不整合対策](2026-10-21-window-manager-deployment.md)

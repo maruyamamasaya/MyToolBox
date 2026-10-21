@@ -48,6 +48,7 @@ def verify(fast=False):
     env = os.environ.copy()
     env['CLANG_MODULE_CACHE_PATH'] = str(ROOT / '.build/clang-cache')
     env['SWIFTPM_MODULECACHE_OVERRIDE'] = str(ROOT / '.build/module-cache')
+    run([sys.executable, 'scripts/test_deploy.py'], logs / 'deployment-tests.log', env)
     run(['swift', 'test', '--disable-sandbox', '--scratch-path', '.build'], logs / 'tests.log', env)
     if not fast:
         run(['xcodebuild', '-project', 'MyToolBox.xcodeproj', '-scheme', 'MyToolBox', '-configuration', 'Release', '-derivedDataPath', 'build', 'build'], logs / 'xcodebuild.log', env)

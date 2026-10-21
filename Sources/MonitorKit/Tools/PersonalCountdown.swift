@@ -10,6 +10,13 @@ public struct PersonalCountdown: Codable, Equatable, Identifiable {
     public var completedHours: Double = 0
     public var hoursPerDay: Double = 2
     public init() {}
+    public static func sortedByRemainingDays(_ entries: [Self], now: Date) -> [Self] {
+        entries.enumerated().sorted {
+            let left = $0.element.remainingDays(now: now)
+            let right = $1.element.remainingDays(now: now)
+            return left == right ? $0.offset < $1.offset : left < right
+        }.map(\.element)
+    }
     public func validate() throws {
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ToolFailure.message("名前を入力してください") }
         guard date.timeIntervalSince1970.isFinite else { throw ToolFailure.message("有効な日付を指定してください") }

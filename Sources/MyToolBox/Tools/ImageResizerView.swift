@@ -164,77 +164,150 @@ actor ImageResizeWorker {
 struct ImageResizerView: View {
     @ObservedObject var model: ImageResizerModel
     @State private var targeted = false
+    @State private var expanded: Bool
+    @State private var showsSettings = false
+    @State private var showsBatchResults = false
+    @State private var previewResult = true
+    init(model: ImageResizerModel, initiallyExpanded: Bool = false) {
+        self.model = model; _expanded = State(initialValue: initiallyExpanded)
+    }
     private var widthBinding: Binding<String> { Binding(get: { model.width }, set: { model.width = $0; model.dimensionChanged(widthChanged: true) }) }
     private var heightBinding: Binding<String> { Binding(get: { model.height }, set: { model.height = $0; model.dimensionChanged(widthChanged: false) }) }
     var body: some View {
-        ToolPage("画像リサイズ", subtitle: "複数画像を選んで、同じ設定でまとめてリサイズ。", symbol: "photo", tint: .orange) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    ToolCard {
-                        HStack(spacing: 18) {
-                            if let preview = model.sourcePreview { Image(nsImage: preview).resizable().scaledToFit().frame(width: 120, height: 90) }
-                            else { Image(systemName: "photo.badge.plus").font(.system(size: 40)).foregroundStyle(.orange).frame(width: 120, height: 90) }
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(model.isBatch ? "\(model.batchURLs.count)枚を選択中" : model.sourceURL?.lastPathComponent ?? "ここに画像をドロップ").font(.headline).lineLimit(2)
-                                if let input = model.input { Text("\(input.width) × \(input.height) px · \(ImageResizerModel.bytes(input.data.count))").foregroundStyle(.secondary) }
-                                else { Text("JPEG・PNG・WebP・HEIC・TIFF ／ 1枚50MiB・200枚まで").font(.caption).foregroundStyle(.secondary) }
-                            }
-                            Spacer()
-                            Button("画像を選択…") { model.open() }.controlSize(.large)
-                        }
-                    }.overlay { RoundedRectangle(cornerRadius: 10).stroke(targeted ? Color.orange : .clear, lineWidth: 3) }
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 18) {
-                            ToolSectionLabel(title: "サイズを指定", symbol: "arrow.up.left.and.arrow.down.right")
-                            if model.isBatch {
-                                Text("倍率は各画像の元サイズが基準です。縦横比を維持する場合は最後に入力した幅または高さを全画像に適用し、反対側は画像ごとに計算します。OFFでは全画像を指定の幅×高さに揃えます。先頭の読み込める画像をプレビューしています。")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            HStack { ForEach([25, 50, 75, 100, 200], id: \.self) { percent in Button("\(percent)%") { model.preset(Double(percent) / 100) } }; Spacer() }
-                            HStack(spacing: 12) {
-                                Text("幅"); TextField("px", text: widthBinding).frame(width: 100); Text("× 高さ"); TextField("px", text: heightBinding).frame(width: 100); Text("px").foregroundStyle(.secondary)
-                                Spacer(); Toggle("縦横比を維持", isOn: $model.keepRatio).onChange(of: model.keepRatio) { _, enabled in if enabled { model.dimensionChanged(widthChanged: true) } }
-                            }
-                            HStack(spacing: 18) {
-                                ThemePicker("出力形式", selection: $model.format, options: ImageResizer.Format.allCases.map { ($0, $0.rawValue) })
-                                if model.format == .jpeg { Text("品質 \(Int((model.quality * 100).rounded()))%").monospacedDigit(); Slider(value: $model.quality, in: 0.1...1, step: 0.01).frame(maxWidth: 200) }
-                                Spacer()
-                                Button(model.isBatch ? "一括リサイズして保存…" : "リサイズする") { model.resize() }.buttonStyle(ThemeButtonStyle(prominent: true)).disabled(model.size == nil)
-                            }
-                            if model.size == nil, model.input != nil { Text("幅・高さは1〜16,384 px、合計4,000万画素以内で指定してください").font(.caption).foregroundStyle(.orange) }
-                        }
-                    }.disabled(model.input == nil)
-                    if let preview = model.resultPreview, let output = model.output, let input = model.input {
-                        ToolCard {
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack { ToolSectionLabel(title: "できあがり", symbol: "checkmark.circle"); Spacer(); Button("画像を保存…") { model.save() }.buttonStyle(ThemeButtonStyle(prominent: true)) }
-                                Image(nsImage: preview).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 260).background(.gray.opacity(0.15))
-                                Text("変換前：\(input.width) × \(input.height) px · \(ImageResizerModel.bytes(input.data.count))  →  変換後：\(model.width) × \(model.height) px · \(ImageResizerModel.bytes(output.count))（\(model.format.rawValue)）").font(.caption).textSelection(.enabled)
-                            }
-                        }
-                    }
-                    if !model.batchResults.isEmpty {
-                        ToolCard {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    ToolSectionLabel(title: "一括処理の結果", symbol: "photo.on.rectangle")
-                                    Spacer()
-                                    if let directory = model.batchDirectory { Button("保存先を開く") { NSWorkspace.shared.open(directory) } }
-                                }
-                                ForEach(Array(model.batchResults.enumerated()), id: \.offset) { _, result in Text(result).font(.caption).textSelection(.enabled) }
-                            }
-                        }
-                    }
-                    HStack { if model.busy { ProgressView().controlSize(.small) }; Text(model.status).font(.caption).textSelection(.enabled) }
-                    ToolFootnote(text: "画像処理は端末内で完結。JPEGの透明部分は白背景になります。PNGは透明を保持します。向きを補正してsRGBで出力し、元のEXIF・GPS情報は引き継ぎません。アニメーション・複数ページ画像は非対応。元画像には上書きできません。")
-                }.padding(24).disabled(model.busy)
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Text("画像リサイズ").font(.headline)
+                Spacer(minLength: 0)
+                Button(expanded ? "小さく戻す" : "拡大") { expanded.toggle() }
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("リサイズの設定")
+                    .popover(isPresented: $showsSettings) { settings }
             }
-        }.frame(minWidth: 900, minHeight: 780)
+            if let input = model.input {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(model.isBatch ? "\(model.batchURLs.count)枚 · 先頭画像をプレビュー" : model.sourceURL?.lastPathComponent ?? "選択中の画像")
+                        .font(.caption.weight(.semibold)).lineLimit(1).help(model.sourceURL?.lastPathComponent ?? "")
+                    Text("元画像 \(input.width) × \(input.height) px · \(ImageResizerModel.bytes(input.data.count))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            let layout = expanded ? AnyLayout(HStackLayout(alignment: .top, spacing: 16)) : AnyLayout(VStackLayout(spacing: 8))
+            layout {
+                preview.frame(maxWidth: .infinity, maxHeight: .infinity)
+                controls.frame(width: expanded ? 290 : nil).fixedSize(horizontal: false, vertical: true)
+            }.frame(maxHeight: .infinity)
+            if let output = model.output {
+                Text("変換後 \(model.width) × \(model.height) px · \(ImageResizerModel.bytes(output.count))（\(model.format.rawValue)）")
+                    .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            if !model.batchResults.isEmpty {
+                Button("一括処理の結果（\(model.batchResults.count)件）") { showsBatchResults = true }
+                    .popover(isPresented: $showsBatchResults) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            if let directory = model.batchDirectory {
+                                Button("保存先を開く") { NSWorkspace.shared.open(directory) }
+                            }
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ForEach(Array(model.batchResults.enumerated()), id: \.offset) { _, result in
+                                        Text(result).font(.caption).textSelection(.enabled)
+                                    }
+                                }
+                            }
+                        }.padding(12).frame(width: 340, height: 320)
+                    }
+            }
+            Text(model.status).font(.caption).foregroundStyle(.secondary)
+                .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Button { model.open() } label: {
+                    Image(systemName: "photo.badge.plus").frame(width: 28, height: 28).contentShape(Rectangle())
+                }.accessibilityLabel("画像を選択").disabled(model.busy)
+                Spacer(minLength: 0)
+                Button { model.resize() } label: {
+                    Text(model.isBatch ? "一括保存…" : "リサイズ").frame(minHeight: 28)
+                }.buttonStyle(.borderedProminent).disabled(model.busy || model.input == nil || model.size == nil)
+                if !model.isBatch {
+                    Button { model.save() } label: { Text("保存…").frame(minHeight: 28) }
+                        .disabled(model.busy || model.output == nil)
+                }
+            }
+        }.padding(10).controlSize(.regular)
+            .frame(minWidth: expanded ? 800 : 340, idealWidth: expanded ? 1100 : 360,
+                   minHeight: expanded ? 600 : 520, idealHeight: expanded ? 850 : 560)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 360, height: 560)))
             .onChange(of: model.format) { _, _ in model.invalidate() }
             .onChange(of: model.quality) { _, _ in model.invalidate() }
+            .onChange(of: model.sourceURL) { _, _ in previewResult = true }
             .dropDestination(for: URL.self) { urls, _ in
                 guard !urls.isEmpty, urls.allSatisfy(\.isFileURL), !model.busy else { return false }
                 model.load(urls); return true
             } isTargeted: { targeted = $0 }
+    }
+    private var preview: some View {
+        VStack(spacing: 6) {
+            if model.resultPreview != nil {
+                Picker("プレビュー", selection: $previewResult) { Text("元画像").tag(false); Text("変換後").tag(true) }
+                    .pickerStyle(.segmented).labelsHidden()
+            }
+            ZStack {
+                RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.35))
+                if let image = previewResult ? (model.resultPreview ?? model.sourcePreview) : model.sourcePreview {
+                    Image(nsImage: image).resizable().scaledToFit().padding(8)
+                        .accessibilityLabel(previewResult && model.resultPreview != nil ? "変換後のプレビュー" : "元画像のプレビュー")
+                } else {
+                    VStack(spacing: 10) {
+                        Image(systemName: "photo.badge.plus").font(.system(size: 32)).foregroundStyle(.orange)
+                        Text("画像をここにドロップ").font(.headline)
+                        Text("複数選択可 · 200枚まで").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }.frame(minHeight: 130, maxHeight: .infinity)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(targeted ? Color.orange : .clear, lineWidth: 3))
+        }
+    }
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("サイズ").font(.caption.weight(.semibold))
+                Spacer()
+                Toggle("縦横比を維持", isOn: $model.keepRatio).font(.caption)
+                    .onChange(of: model.keepRatio) { _, enabled in if enabled { model.dimensionChanged(widthChanged: true) } }
+            }
+            HStack(spacing: 6) {
+                Text("幅").font(.caption)
+                TextField("px", text: widthBinding).textFieldStyle(.roundedBorder).accessibilityLabel("幅")
+                Text("高さ").font(.caption)
+                TextField("px", text: heightBinding).textFieldStyle(.roundedBorder).accessibilityLabel("高さ")
+                Text("px").font(.caption).foregroundStyle(.secondary)
+            }
+            Picker("出力形式", selection: $model.format) {
+                ForEach(ImageResizer.Format.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            if model.size == nil, model.input != nil {
+                Text("1〜16,384 px、合計4,000万画素以内で指定してください")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }.disabled(model.busy || model.input == nil)
+    }
+    private var settings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("元画像からの倍率").font(.headline)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                ForEach([25, 50, 75, 100, 200], id: \.self) { percent in
+                    Button("\(percent)%") { model.preset(Double(percent) / 100) }
+                }
+            }.disabled(model.busy || model.input == nil)
+            if model.format == .jpeg {
+                Text("JPEG品質 \(Int((model.quality * 100).rounded()))%").font(.caption)
+                Slider(value: $model.quality, in: 0.1...1, step: 0.01).disabled(model.busy)
+            }
+            ThemeMenu()
+            Text("一括処理の倍率は各画像の元サイズが基準。縦横比ONでは最後に入力した幅か高さを適用し、反対側を画像ごとに計算します。OFFは全画像を指定サイズに揃えます。")
+                .font(.caption).foregroundStyle(.secondary)
+            Text("JPEG・PNG・WebP・HEIC・TIFF、1枚50MiBまで。元画像への上書き不可。JPEGの透明部分は白、PNGは透明を保持。向きを補正しsRGBで出力、EXIF・GPSは引き継ぎません。アニメーション・複数ページは非対応。")
+                .font(.caption).foregroundStyle(.secondary)
+        }.padding(12).frame(width: 300)
     }
 }

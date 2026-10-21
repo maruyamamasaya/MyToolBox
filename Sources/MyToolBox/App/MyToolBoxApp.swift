@@ -125,6 +125,7 @@ import Combine
                     self?.toolWindows.show(tool)
                 },
                 openMonitorSettings: { [weak self] in self?.showMonitorWindow(settings: true) },
+                closeTools: { IndependentTools.closeRunningTools() },
                 resizable: true
             ))
             controller.window?.contentMinSize = NSSize(width: ToolLauncher.preferredWidth, height: 480)

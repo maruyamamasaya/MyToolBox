@@ -292,3 +292,7 @@ RenderWindowManagerは実際のWindowManagerModelへ登録境界・信頼読込�
 `tools/VerifyAllIndependentTools.swift`を全Sources（Probe／MyToolBoxAppを除外）と`-parse-as-library -lsqlite3`でコンパイルし、`build/verify-all-independent-tools`を実行。起動・表示・終了境界を注入した実ToolWindowsで全ToolIDの配送、通常close／拒否／cleanupと常駐条件を確認する。モデルは隔離UserDefaults、MonitorStoreは自動起動なしで設定／所有境界を確認し、4テーマ×モニター2画面を非表示描画。NSAppはprohibited。本番アプリ・LaunchServices・実キー・録音・音声・AXは操作しない。
 
 Fullは全カタログhelperのID・実行ファイル・祝日・マイク用途文・deep署名・マイク音声入力entitlementを確認。Python負例で全helperの欠落とマイク用途文の欠落も拒否する。実起動・PID維持・権限・各画面の実操作は別途未検証として記録。[結果](sessions/2026-10-20-all-independent-tools.md)。
+
+## デプロイ安全性の回帰
+
+`python3 scripts/test_deploy.py`：親不在の常駐helper・開発コピーによる配置拒否、事前検査の無変更、コピー中の起動による中止、配置検証失敗時の復旧、配置後起動時の旧版保持、成功時の整理を隔離フォルダで確認する。実プロセスの終了・本番配置はしない。

@@ -16,6 +16,7 @@ struct ToolLauncher: View {
     }
     var openTool: (ToolID) -> Void
     var openMonitorSettings: () -> Void
+    var closeTools: (() -> Void)? = nil
     var openWindow: (() -> Void)? = nil
     var resizable = false
     var toolIcon: (ToolID) -> NSImage? = { bundledToolIcons[$0] }
@@ -88,6 +89,10 @@ struct ToolLauncher: View {
                 Button(action: openMonitorSettings) { Label("設定", systemImage: "gearshape") }
                 if let openWindow {
                     Button(action: openWindow) { Label("ウィンドウで開く", systemImage: "macwindow") }
+                }
+                if let closeTools {
+                    Button(action: closeTools) { Label("ツールを一括終了", systemImage: "xmark.square") }
+                        .help("独立ツールを終了します。タイマーは確認し、未保存の編集は各ツールで確認します。")
                 }
                 Spacer()
                 Text("監視はバックグラウンドで継続").font(theme.font(9)).foregroundStyle(.secondary)

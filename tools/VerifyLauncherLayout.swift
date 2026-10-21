@@ -13,7 +13,7 @@ import AppKit
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
         for theme in VisualTheme.allCases {
             let root = ThemeRoot(override: theme) {
-                ToolLauncher(openTool: { _ in }, openMonitorSettings: {}, resizable: true, toolIcon: { tool in
+                ToolLauncher(openTool: { _ in }, openMonitorSettings: {}, closeTools: {}, resizable: true, toolIcon: { tool in
                     NSImage(contentsOfFile: "Resources/ToolIcons/\(tool.rawValue).icns")
                 })
             }.defaultAppStorage(defaults)

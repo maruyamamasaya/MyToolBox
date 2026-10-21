@@ -126,7 +126,7 @@ struct PersonalCountdownView: View {
                                 }.buttonStyle(.borderedProminent)
                             }.frame(maxWidth: .infinity).padding(.vertical, 32)
                         }
-                        ForEach(model.entries) { entry in
+                        ForEach(PersonalCountdown.sortedByRemainingDays(model.entries, now: context.date)) { entry in
                             countdownCard(entry, now: context.date)
                         }
                     }

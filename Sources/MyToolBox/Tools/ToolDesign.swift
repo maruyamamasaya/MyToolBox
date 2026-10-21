@@ -156,14 +156,16 @@ struct ToolCalendar: View {
 /// Resizes only its own resizable window; borderless offscreen previews keep their test dimensions.
 struct ExpandableToolWindowSizing: NSViewRepresentable {
     var expanded: Bool
+    var compactSize = NSSize(width: 360, height: 520)
     final class Host: NSView {
         var expanded = false
+        var compactSize = NSSize(width: 360, height: 520)
         var applied: Bool?
         override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); apply() }
         func apply() {
             guard let window, window.styleMask.contains(.resizable), applied != expanded else { return }
             applied = expanded
-            let desired = NSSize(width: expanded ? 1100 : 360, height: expanded ? 850 : 520)
+            let desired = expanded ? NSSize(width: 1100, height: 850) : compactSize
             let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 1000)
             let top = window.frame.maxY
             window.setContentSize(NSSize(width: min(desired.width, visible.width - 20), height: min(desired.height, visible.height - 50)))
@@ -173,9 +175,9 @@ struct ExpandableToolWindowSizing: NSViewRepresentable {
             window.setFrame(frame, display: false)
         }
     }
-    func makeNSView(context: Context) -> Host { let host = Host(); host.expanded = expanded; return host }
+    func makeNSView(context: Context) -> Host { let host = Host(); host.expanded = expanded; host.compactSize = compactSize; return host }
     func updateNSView(_ view: Host, context: Context) {
-        view.expanded = expanded
+        view.expanded = expanded; view.compactSize = compactSize
         DispatchQueue.main.async { view.apply() }
     }
 }

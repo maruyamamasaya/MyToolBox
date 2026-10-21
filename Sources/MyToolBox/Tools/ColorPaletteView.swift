@@ -11,85 +11,114 @@ struct ColorPaletteView: View {
     private var start: PaletteColor? { PaletteColor(hex: first) }
     private var end: PaletteColor? { PaletteColor(hex: second) }
     private var css: String? { guard let start, let end else { return nil }; return start.gradient(to: end, degrees: degrees) }
+    @State private var expanded = false
+    @State private var tab = 0
+    init(initiallyExpanded: Bool = false, initialTab: Int = 0) {
+        _expanded = State(initialValue: initiallyExpanded)
+        _tab = State(initialValue: initialTab)
+    }
     var body: some View {
-        ToolPage("カラーパレット", subtitle: "色を見つけて、カラーコードをすぐにコピー。", symbol: "paintpalette", tint: .pink) {
-            ScrollView {
-                VStack(spacing: 18) {
-                    ToolCard {
-                        HStack(spacing: 20) {
-                            swatch(selected).frame(width: 110, height: 100)
-                            VStack(alignment: .leading, spacing: 12) {
-                                ToolSectionLabel(title: "カラーコードを入力", symbol: "number")
-                                TextField("#あり・なし、3桁または6桁", text: $input).textFieldStyle(.roundedBorder).accessibilityLabel("HEXカラーコード")
-                                if let selected {
-                                    HStack { Text(selected.hex).monospaced(); Button("HEXをコピー") { copy(selected.hex) }; Text(selected.rgb).monospaced(); Button("RGBをコピー") { copy(selected.rgb) } }
-                                } else { Text("3桁または6桁のHEXカラーコードを入力してください").foregroundStyle(.red) }
-                            }
-                        }
-                    }
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 14) {
-                            ToolSectionLabel(title: "グラデーションをつくる", symbol: "rectangle.fill")
-                            GeometryReader { geometry in
-                                let radians = Double(degrees) * .pi / 180
-                                let length = abs(geometry.size.width * sin(radians)) + abs(geometry.size.height * cos(radians))
-                                let dx = length * sin(radians) / (2 * max(1, geometry.size.width))
-                                let dy = -length * cos(radians) / (2 * max(1, geometry.size.height))
-                                Rectangle().fill(LinearGradient(colors: [color(start), color(end)], startPoint: UnitPoint(x: 0.5 - dx, y: 0.5 - dy), endPoint: UnitPoint(x: 0.5 + dx, y: 0.5 + dy)))
-                                    .opacity(css == nil ? 0 : 1)
-                                    .frame(width: geometry.size.width, height: geometry.size.height)
-                            }.frame(height: 105).accessibilityLabel("グラデーションのプレビュー")
-                            HStack {
-                                colorInput("カラー1", text: $first)
-                                colorInput("カラー2", text: $second)
-                                Picker("方向", selection: $degrees) {
-                                    Text("斜め ↘").tag(135); Text("下から上 ↑").tag(0); Text("右から左 ←").tag(270); Text("斜め ↗").tag(45)
-                                }.frame(width: 190)
-                            }
-                            HStack {
-                                Text(css ?? "両方の色に有効なHEXを入力してください").font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                                Spacer()
-                                Button("CSSをコピー") { if let css { copy(css) } }.disabled(css == nil)
-                            }
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]) {
-                                ForEach(PaletteColor.recommendations, id: \.0) { item in
-                                    Button { first = item.1; second = item.2 } label: {
-                                        VStack(alignment: .leading) {
-                                            Rectangle().fill(LinearGradient(colors: [color(PaletteColor(hex: item.1)), color(PaletteColor(hex: item.2))], startPoint: .topLeading, endPoint: .bottomTrailing)).frame(height: 30)
-                                            Text(item.0).font(.caption)
-                                        }
-                                    }.buttonStyle(.plain).accessibilityLabel(item.0 + "を適用")
-                                }
-                            }
-                        }
-                    }
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            ToolSectionLabel(title: "カラーコードをストック", symbol: "note.text")
-                            TextEditor(text: $notes).font(.system(.body, design: .monospaced)).frame(height: 90).accessibilityLabel("カラーコードのメモ")
-                            Text("このMacに自動保存").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            ToolSectionLabel(title: "120色 · クリックして選択", symbol: "paintpalette")
-                            ForEach(PaletteColor.groups, id: \.0) { group in
-                                HStack {
-                                    Text(group.0).font(.caption).frame(width: 85, alignment: .leading)
-                                    ForEach(group.1, id: \.self) { hex in
-                                        Button { input = hex } label: {
-                                            swatch(PaletteColor(hex: hex)).frame(height: 32)
-                                                .overlay(Rectangle().strokeBorder(selected?.hex == hex ? Color.primary : .clear, lineWidth: 3))
-                                        }.buttonStyle(.plain).help(hex).accessibilityLabel(group.0 + " " + hex + "を選択").accessibilityValue(selected?.hex == hex ? "選択中" : "未選択")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Text(status).font(.caption).foregroundStyle(.secondary).accessibilityLabel("コピー状態")
-                }.padding(24)
+        VStack(spacing: 10) {
+            HStack {
+                Label("カラーパレット", systemImage: "paintpalette").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                ThemeMenu()
             }
-        }.frame(minWidth: 940, minHeight: 760)
+            Picker("表示", selection: $tab) {
+                Text("パレット").tag(0); Text("グラデーション").tag(1); Text("メモ").tag(2)
+            }.pickerStyle(.segmented)
+            if tab == 0 { palette }
+            else if tab == 1 { gradient }
+            else {
+                TextEditor(text: $notes).font(.system(.body, design: .monospaced))
+                    .accessibilityLabel("カラーコードのメモ")
+                Text("このMacに自動保存").font(.caption).foregroundStyle(.secondary)
+            }
+            if !status.isEmpty {
+                Text(status).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading).accessibilityLabel("コピー状態")
+            }
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 380, height: 560)))
+            .frame(minWidth: expanded ? 800 : 360, idealWidth: expanded ? 1100 : 380,
+                   minHeight: expanded ? 600 : 520, idealHeight: expanded ? 850 : 560)
+    }
+    private var palette: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                swatch(selected).frame(width: 54, height: 62)
+                VStack(alignment: .leading, spacing: 6) {
+                    TextField("HEX（3桁・6桁）", text: $input).textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("HEXカラーコード")
+                    if let selected {
+                        HStack {
+                            Button("HEX", systemImage: "doc.on.doc") { copy(selected.hex) }.help(selected.hex)
+                            Button("RGB", systemImage: "doc.on.doc") { copy(selected.rgb) }.help(selected.rgb)
+                        }
+                        Text(selected.rgb).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    } else { Text("3桁・6桁のHEXを入力").font(.caption).foregroundStyle(.red) }
+                }
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(PaletteColor.groups, id: \.0) { group in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(group.0).font(.caption).foregroundStyle(.secondary)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 11), spacing: 4) {
+                                ForEach(group.1, id: \.self) { hex in
+                                    Button { input = hex } label: {
+                                        swatch(PaletteColor(hex: hex)).frame(height: expanded ? 42 : 26)
+                                            .overlay(Rectangle().strokeBorder(selected?.hex == hex ? Color.primary : .clear, lineWidth: 3))
+                                            .contentShape(Rectangle())
+                                    }.buttonStyle(.plain).help(hex)
+                                        .accessibilityLabel(group.0 + " " + hex + "を選択")
+                                        .accessibilityValue(selected?.hex == hex ? "選択中" : "未選択")
+                                }
+                            }
+                        }
+                    }
+                }.padding(2)
+            }
+            Text("120色 · クリックして選択").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+    private var gradient: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                GeometryReader { geometry in
+                    let radians = Double(degrees) * .pi / 180
+                    let length = abs(geometry.size.width * sin(radians)) + abs(geometry.size.height * cos(radians))
+                    let dx = length * sin(radians) / (2 * max(1, geometry.size.width))
+                    let dy = -length * cos(radians) / (2 * max(1, geometry.size.height))
+                    Rectangle().fill(LinearGradient(colors: [color(start), color(end)],
+                        startPoint: UnitPoint(x: 0.5 - dx, y: 0.5 - dy), endPoint: UnitPoint(x: 0.5 + dx, y: 0.5 + dy)))
+                        .opacity(css == nil ? 0 : 1)
+                }.frame(height: expanded ? 240 : 100).accessibilityLabel("グラデーションのプレビュー")
+                HStack { colorInput("カラー1", text: $first); colorInput("カラー2", text: $second) }
+                HStack {
+                    Picker("方向", selection: $degrees) {
+                        Text("斜め ↘").tag(135); Text("上 ↑").tag(0); Text("左 ←").tag(270); Text("斜め ↗").tag(45)
+                    }
+                    Button("CSSコピー", systemImage: "doc.on.doc") { if let css { copy(css) } }.disabled(css == nil)
+                }
+                Text(css ?? "両方に有効なHEXを入力してください")
+                    .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: expanded ? 4 : 2), spacing: 8) {
+                    ForEach(PaletteColor.recommendations, id: \.0) { item in
+                        Button { first = item.1; second = item.2 } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Rectangle().fill(LinearGradient(colors: [color(PaletteColor(hex: item.1)), color(PaletteColor(hex: item.2))], startPoint: .topLeading, endPoint: .bottomTrailing)).frame(height: expanded ? 55 : 28)
+                                Text(item.0).font(.caption).lineLimit(1)
+                            }.frame(maxWidth: .infinity).contentShape(Rectangle())
+                        }.accessibilityLabel(item.0 + "を適用")
+                    }
+                }
+            }.padding(2)
+        }
     }
     private func color(_ value: PaletteColor?) -> Color {
         guard let value else { return .clear }

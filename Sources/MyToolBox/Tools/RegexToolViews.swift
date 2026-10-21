@@ -1,11 +1,32 @@
 import SwiftUI
 
 struct RegexTesterView: View {
-    @State private var pattern = #"([A-Za-z]+)-(\d+)"#
+    @State private var pattern: String
+    @State private var expanded: Bool
+    private let sampleText: String
+    private let initialResult: Result<RegexWorkbench.Output, Error>?
+    private let initialResultTab: Int
+    init(initiallyExpanded: Bool = false, initialResultTab: Int = 0, initialPattern: String = #"([A-Za-z]+)-(\d+)"#,
+         sampleText: String = "item-123\norder-456\n日本語のテスト",
+         initialResult: Result<RegexWorkbench.Output, Error>? = nil) {
+        _pattern = State(initialValue: initialPattern); _expanded = State(initialValue: initiallyExpanded)
+        self.sampleText = sampleText; self.initialResult = initialResult; self.initialResultTab = initialResultTab
+    }
     var body: some View {
-        ToolPage("正規表現テスター", subtitle: "パターンを試し、一致箇所・キャプチャ・置換を確認", symbol: "text.magnifyingglass", tint: .indigo) {
-            ScrollView { RegexTestPanel(pattern: $pattern).padding(22) }
-        }.frame(minWidth: 800, idealWidth: 900, minHeight: 760)
+        VStack(spacing: 10) {
+            HStack {
+                Label("正規表現テスター", systemImage: "text.magnifyingglass").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                ThemeMenu()
+            }
+            RegexTestPanel(pattern: $pattern, sampleText: sampleText, compactUI: true, expanded: expanded, initialResultTab: initialResultTab, initialResult: initialResult)
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 400, height: 560)))
+            .frame(minWidth: expanded ? 800 : 380, idealWidth: expanded ? 1100 : 400,
+                   minHeight: expanded ? 600 : 520, idealHeight: expanded ? 850 : 560)
     }
 }
 
@@ -26,11 +47,24 @@ struct RegexTestPanel: View {
     @State private var error = ""
     @State private var busy = false
     @State private var status = ""
-    init(pattern: Binding<String>, sampleText: String = "item-123\norder-456\n日本語のテスト") {
+    private let compactUI: Bool
+    private let expanded: Bool
+    @State private var showsSettings = false
+    @State private var resultTab = 0
+    init(pattern: Binding<String>, sampleText: String = "item-123\norder-456\n日本語のテスト", compactUI: Bool = false, expanded: Bool = false, initialResultTab: Int = 0,
+         initialResult: Result<RegexWorkbench.Output, Error>? = nil) {
         _pattern = pattern; _input = State(initialValue: sampleText)
+        self.compactUI = compactUI; self.expanded = expanded
+        _resultTab = State(initialValue: initialResultTab)
+        if let initialResult {
+            switch initialResult {
+            case .success(let output): _output = State(initialValue: output)
+            case .failure(let error): _error = State(initialValue: error.localizedDescription)
+            }
+        }
     }
     private var request: RegexRequest { .init(text: input, pattern: pattern, replacement: replacement, all: all, ignoreCase: ignoreCase, multiline: multiline, dotAll: dotAll) }
-    var body: some View {
+    private var originalPanel: some View {
         VStack(alignment: .leading, spacing: 14) {
             ToolCard {
                 VStack(alignment: .leading, spacing: 12) {
@@ -77,6 +111,11 @@ struct RegexTestPanel: View {
             Text(status).font(.caption).foregroundStyle(.secondary)
             ToolFootnote(text: "ICU正規表現。JavaScriptとは一部構文が異なります。置換はICU形式（$0・$1など）。本文64KiB・一致1,000件まで。端末内で処理し保存しません。")
         }
+    }
+    var body: some View {
+        Group {
+            if compactUI { compactPanel } else { originalPanel }
+        }
         .task(id: request) {
             let value = request
             output = nil; error = ""; busy = true; status = ""
@@ -88,6 +127,76 @@ struct RegexTestPanel: View {
             guard !Task.isCancelled else { return }
             busy = false
             switch result { case .success(let value): output = value; case .failure(let failure): error = failure.localizedDescription }
+        }
+    }
+    private var compactPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                TextField("パターン（/…/不要）", text: $pattern)
+                    .textFieldStyle(.roundedBorder).font(.system(.body, design: .monospaced))
+                    .accessibilityLabel("正規表現パターン")
+                Button { copy(pattern) } label: { Image(systemName: "doc.on.doc").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("パターンをコピー")
+                Button { showsSettings.toggle() } label: { Image(systemName: "slider.horizontal.3").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("検索設定").popover(isPresented: $showsSettings) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("検索設定").font(.headline)
+                            Toggle("g すべて検索", isOn: $all)
+                            Toggle("i 大文字小文字を無視", isOn: $ignoreCase)
+                            Toggle("m 複数行（^・$）", isOn: $multiline)
+                            Toggle("s 改行も含む（.）", isOn: $dotAll)
+                            Text("ICU形式。置換は$0・$1など。本文64KiB・式と置換4KiB・一致1,000件・0.25秒まで。端末内で処理し保存しません。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(16).frame(width: 290)
+                    }
+            }
+            HStack {
+                Text("テスト文字列").font(.caption)
+                Text([all ? "g" : "", ignoreCase ? "i" : "", multiline ? "m" : "", dotAll ? "s" : ""].joined())
+                    .font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                Spacer()
+                Button { input = "" } label: { Image(systemName: "trash").frame(width: 24, height: 24).contentShape(Rectangle()) }.accessibilityLabel("本文をクリア")
+            }
+            TextEditor(text: $input).font(.system(.body, design: .monospaced))
+                .frame(height: expanded ? 200 : 105).accessibilityLabel("テスト文字列")
+            HStack {
+                Text(busy ? "確認中…" : !error.isEmpty ? "入力エラー" : output.map { "一致：\($0.matches.count)件" } ?? "未確認").font(.caption)
+                Spacer()
+                if resultTab == 2 {
+                    Button("コピー", systemImage: "doc.on.doc") { if let output { copy(output.replacement) } }.disabled(output == nil)
+                }
+            }
+            Picker("結果", selection: $resultTab) {
+                Text("一致箇所").tag(0); Text("キャプチャ").tag(1); Text("置換").tag(2)
+            }.pickerStyle(.segmented)
+            if resultTab == 2 {
+                TextField("置換文字列（$1・$2）", text: $replacement).textFieldStyle(.roundedBorder).accessibilityLabel("置換文字列")
+            }
+            GeometryReader { geometry in
+              ScrollView([.vertical, .horizontal]) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !error.isEmpty {
+                        Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                    } else if let output {
+                        if resultTab == 0 { Text(highlight(output)).textSelection(.enabled) }
+                        else if resultTab == 1 {
+                            if output.matches.isEmpty { Text("一致なし") }
+                            ForEach(Array(output.matches.enumerated()), id: \.offset) { index, match in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("\(index + 1)：位置 \(match.range.location)、長さ \(match.range.length)（UTF-16）").foregroundStyle(.secondary)
+                                    ForEach(match.groups.indices, id: \.self) { group in
+                                        Text("$\(group) = \(match.groups[group].map { $0.isEmpty ? "（空文字）" : $0 } ?? "（未一致）")").textSelection(.enabled)
+                                    }
+                                }
+                            }
+                        } else { Text(output.replacement.isEmpty ? "（空文字）" : output.replacement).textSelection(.enabled) }
+                    } else { Text(busy ? "確認中…" : "結果がここに表示されます").foregroundStyle(.secondary) }
+                }.font(.system(.body, design: .monospaced)).padding(8)
+                    .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+              }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+            if !status.isEmpty { Text(status).font(.caption).foregroundStyle(.secondary) }
         }
     }
     private func highlight(_ output: RegexWorkbench.Output) -> AttributedString {
@@ -111,64 +220,125 @@ struct RegexBuilderView: View {
     @State private var end = true
     @State private var pattern = ""
     @State private var error = ""
+    @State private var expanded: Bool
+    @State private var tab: Int
+    @State private var showsHelp = false
+    @State private var status = ""
+    init(initiallyExpanded: Bool = false, initialTab: Int = 0, initialParts: [RegexWorkbench.Part]? = nil) {
+        _expanded = State(initialValue: initiallyExpanded); _tab = State(initialValue: initialTab)
+        var digit = RegexWorkbench.Part(); digit.repetition = .exact; digit.minimum = 3
+        var dash = RegexWorkbench.Part(); dash.kind = .literal; dash.value = "-"
+        var last = RegexWorkbench.Part(); last.repetition = .exact; last.minimum = 4
+        let items = initialParts ?? [digit, dash, last]
+        _parts = State(initialValue: items)
+        do { _pattern = State(initialValue: try RegexWorkbench.build(items, start: true, end: true)) }
+        catch { _pattern = State(initialValue: "(?!)"); _error = State(initialValue: error.localizedDescription) }
+    }
     var body: some View {
-        ToolPage("正規表現ビルダー", subtitle: "条件を並べて作り、その場でテスト", symbol: "wand.and.stars", tint: .purple) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("条件を追加").font(.headline)
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110))]) {
-                                ForEach(RegexWorkbench.PartKind.allCases, id: \.self) { kind in
-                                    Button(kind.rawValue) { var part = RegexWorkbench.Part(); part.kind = kind; parts.append(part); update() }.disabled(parts.count >= 40)
-                                }
-                            }
-                            HStack {
-                                Text("プリセット")
-                                Button("郵便番号") { preset(postal: true) }
-                                Button("数字のみ") { preset(postal: false) }
-                                Menu("その他") {
-                                    ForEach(["英数字のみ", "メール簡易版", "URL簡易版", "IPv4簡易版"], id: \.self) { name in Button(name) { extraPreset(name) } }
-                                }
-                                Button("リセット") { parts = []; update() }
-                            }
-                        }
-                    }
-                    ForEach($parts) { $part in
-                        ToolCard {
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack {
-                                    Text(part.kind.rawValue).font(.headline); Spacer()
-                                    Button("↑") { move(part.id, -1) }.accessibilityLabel("条件を上へ")
-                                    Button("↓") { move(part.id, 1) }.accessibilityLabel("条件を下へ")
-                                    Button("削除") { parts.removeAll { $0.id == part.id }; update() }
-                                }
-                                if [.literal, .characterClass, .group, .either].contains(part.kind) {
-                                    TextField(part.kind == .characterClass ? "例：a-zA-Z0-9_-" : "文字列", text: $part.value).textFieldStyle(.roundedBorder).onChange(of: part.value) { _, _ in update() }
-                                }
-                                if part.kind == .either { TextField("または", text: $part.alternative).textFieldStyle(.roundedBorder).onChange(of: part.alternative) { _, _ in update() } }
-                                if part.kind == .characterClass { Toggle("含まない文字", isOn: $part.negate).onChange(of: part.negate) { _, _ in update() } }
-                                if part.kind == .group { Toggle("キャプチャする", isOn: $part.capture).onChange(of: part.capture) { _, _ in update() } }
-                                HStack {
-                                    Picker("繰り返し", selection: $part.repetition) { ForEach(RegexWorkbench.Repetition.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.onChange(of: part.repetition) { _, _ in update() }
-                                    if [.exact, .range, .atLeast].contains(part.repetition) {
-                                        Stepper("回数 \(part.minimum)", value: $part.minimum, in: 0...1000).onChange(of: part.minimum) { _, _ in part.maximum = max(part.minimum, part.maximum); update() }
-                                    }
-                                    if part.repetition == .range { Stepper("最大 \(part.maximum)", value: $part.maximum, in: part.minimum...1000).onChange(of: part.maximum) { _, _ in update() } }
-                                }
-                            }
-                        }
-                    }
-                    HStack { Toggle("先頭から ^", isOn: $start); Toggle("末尾まで $", isOn: $end) }.onChange(of: start) { _, _ in update() }.onChange(of: end) { _, _ in update() }
-                    if !error.isEmpty { Text(error).foregroundStyle(.orange) }
-                    Text("生成パターン・テスト").font(.title3)
-                    RegexTestPanel(pattern: $pattern, sampleText: "123-4567\n1234-567\nabc-1234")
-                    ToolFootnote(text: "メール・URL・IPv4は簡易判定（IPv4の0〜255は検証しません）。固定文字・OR・グループの内容は文字としてエスケープ。文字クラスだけはa-zなどの範囲構文を入力します。条件変更でパターンを再生成します。")
-                }.padding(22)
+        VStack(spacing: 10) {
+            HStack {
+                Label("正規表現ビルダー", systemImage: "wand.and.stars").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                ThemeMenu()
             }
-        }.frame(minWidth: 850, idealWidth: 950, minHeight: 780).onAppear { if parts.isEmpty { preset(postal: true) } }
+            Picker("表示", selection: $tab) { Text("条件を編集").tag(0); Text("テスト").tag(1) }.pickerStyle(.segmented)
+            ZStack(alignment: .topLeading) {
+                editor.opacity(tab == 0 ? 1 : 0).disabled(tab != 0).allowsHitTesting(tab == 0).accessibilityHidden(tab != 0)
+                // Keep the test panel mounted so text, replacement and flags survive tab/size changes.
+                RegexTestPanel(pattern: $pattern, sampleText: "123-4567\n1234-567\nabc-1234", compactUI: true, expanded: expanded)
+                    .opacity(tab == 1 ? 1 : 0).disabled(tab != 1).allowsHitTesting(tab == 1).accessibilityHidden(tab != 1)
+            }
+            if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.orange).lineLimit(3) }
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 400, height: 600)))
+            .frame(minWidth: expanded ? 800 : 380, idealWidth: expanded ? 1100 : 400,
+                   minHeight: expanded ? 600 : 560, idealHeight: expanded ? 850 : 600)
+    }
+    private var editor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Menu("条件を追加", systemImage: "plus") {
+                    ForEach(RegexWorkbench.PartKind.allCases, id: \.self) { kind in
+                        Button(kind.rawValue) { var part = RegexWorkbench.Part(); part.kind = kind; parts.append(part); update() }
+                    }
+                }.disabled(parts.count >= 40)
+                Menu("プリセット") {
+                    Button("郵便番号") { preset(postal: true) }
+                    Button("数字のみ") { preset(postal: false) }
+                    ForEach(["英数字のみ", "メール簡易版", "URL簡易版", "IPv4簡易版"], id: \.self) { name in Button(name) { extraPreset(name) } }
+                }
+                Spacer(minLength: 0)
+                Button { parts = []; update() } label: { Image(systemName: "trash").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("条件をリセット")
+            }
+            HStack {
+                Toggle("先頭 ^", isOn: $start); Toggle("末尾 $", isOn: $end)
+                Spacer()
+                Text("\(parts.count)/40").font(.caption).foregroundStyle(.secondary)
+            }.onChange(of: start) { _, _ in update() }.onChange(of: end) { _, _ in update() }
+            ScrollView {
+                VStack(spacing: 8) {
+                    if parts.isEmpty { Text("「条件を追加」から組み立ててください").foregroundStyle(.secondary).padding(.top, 12) }
+                    ForEach($parts) { $part in
+                        partEditor($part)
+                    }
+                }.padding(2)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            HStack {
+                Text("生成パターン").font(.caption)
+                Spacer()
+                Button { showsHelp.toggle() } label: { Image(systemName: "questionmark.circle").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("ビルダーの使い方").popover(isPresented: $showsHelp) {
+                        Text("固定文字・OR・グループは文字としてエスケープ。文字クラスはa-zなどの範囲構文。条件変更で手修正を含め再生成します。メール・URL・IPv4は簡易判定（IPv4の0〜255は検証しません）。最大40条件・回数0〜1,000。")
+                            .font(.caption).padding(16).frame(width: 300)
+                    }
+                Button { NSPasteboard.general.clearContents(); status = NSPasteboard.general.setString(pattern, forType: .string) ? "コピーしました" : "コピーできませんでした" } label: {
+                    Image(systemName: "doc.on.doc").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.accessibilityLabel("パターンをコピー").disabled(!error.isEmpty)
+            }
+            TextField("生成パターン（手修正可）", text: $pattern).textFieldStyle(.roundedBorder)
+                .font(.system(.body, design: .monospaced)).accessibilityLabel("生成パターン")
+            if !status.isEmpty { Text(status).font(.caption).foregroundStyle(.secondary) }
+        }
+    }
+    private func partEditor(_ binding: Binding<RegexWorkbench.Part>) -> some View {
+        let part = binding.wrappedValue
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(part.kind.rawValue).font(.headline); Spacer()
+                Button { move(part.id, -1) } label: { Image(systemName: "arrow.up").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("条件を上へ").disabled(parts.first?.id == part.id)
+                Button { move(part.id, 1) } label: { Image(systemName: "arrow.down").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("条件を下へ").disabled(parts.last?.id == part.id)
+                Button { parts.removeAll { $0.id == part.id }; update() } label: { Image(systemName: "xmark").frame(width: 24, height: 24).contentShape(Rectangle()) }
+                    .accessibilityLabel("条件を削除")
+            }
+            if [.literal, .characterClass, .group, .either].contains(part.kind) {
+                TextField(part.kind == .characterClass ? "例：a-zA-Z0-9_-" : "文字列", text: binding.value).textFieldStyle(.roundedBorder)
+                    .accessibilityLabel(part.kind.rawValue + "の文字列").onChange(of: part.value) { _, _ in update() }
+            }
+            if part.kind == .either {
+                TextField("または", text: binding.alternative).textFieldStyle(.roundedBorder).onChange(of: part.alternative) { _, _ in update() }
+            }
+            if part.kind == .characterClass { Toggle("含まない文字", isOn: binding.negate).onChange(of: part.negate) { _, _ in update() } }
+            if part.kind == .group { Toggle("キャプチャする", isOn: binding.capture).onChange(of: part.capture) { _, _ in update() } }
+            Picker("繰り返し", selection: binding.repetition) {
+                ForEach(RegexWorkbench.Repetition.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.onChange(of: part.repetition) { _, _ in update() }
+            if [.exact, .range, .atLeast].contains(part.repetition) {
+                Stepper("回数 \(part.minimum)", value: binding.minimum, in: 0...1000)
+                    .onChange(of: part.minimum) { _, value in binding.wrappedValue.maximum = max(value, binding.wrappedValue.maximum); update() }
+            }
+            if part.repetition == .range {
+                Stepper("最大 \(part.maximum)", value: binding.maximum, in: part.minimum...1000).onChange(of: part.maximum) { _, _ in update() }
+            }
+        }.padding(8).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
     }
     private func update() {
+        status = ""
         do { pattern = try RegexWorkbench.build(parts, start: start, end: end); error = "" }
         catch { self.error = error.localizedDescription; pattern = "(?!)" }
     }

@@ -41,3 +41,7 @@ API：[Apple AXUIElementSetAttributeValue](https://developer.apple.com/documenta
 保存先は既存local.MyToolBox／tools.windowManager.shortcuts.v1を継承。競合時は部分登録を含めて全解除し、ON設定を消さず理由を表示する。設定ONと実登録結果は別に扱う。親と他のMyToolBox helperも配置対象から除外する。
 
 独立版は親と異なるbundle IDのため、親へのアクセシビリティ許可を前提にしない。独立版「ウィンドウマネージャー」の許可はユーザーが確認する。同じ証明書でhelperを署名するが、実機のTCC許可維持は署名検証と別。許可・署名・ログイン設定をアプリや検証が自動変更することはない。[設計](../decisions/0012-window-manager-service.md)・[検証記録](../sessions/2026-10-20-independent-window-manager.md)。配置・最新版切替済み。許可済み表示と代表キーの左半分／復元を[利用者が実入力確認](../sessions/2026-10-20-helper-latest-shortcuts.md)。
+
+## 更新後の操作不能を防ぐ
+
+デプロイ前に本体とhelperを通常終了し、新版配置後に起動する。常駐したままバンドルを交換して旧実行ファイルを削除する更新は行わない。許可スイッチやキー登録成功だけでは配置成功を示さない。[必須デプロイ手順](../OPERATIONS.md#デプロイの必須手順)を参照。

@@ -3,6 +3,22 @@ import XCTest
 
 final class PersonalCountdownTests: XCTestCase {
     private func date(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
+    func testRemainingDaysSortIncludesPastAndHourGoalsAndKeepsTies() throws {
+        let now = date("2026-10-21T12:00:00+09:00")
+        var later = PersonalCountdown(); later.title = "先"; later.date = date("2026-10-25T00:00:00+09:00")
+        var today = PersonalCountdown(); today.title = "今日"; today.date = now
+        var past = PersonalCountdown(); past.title = "過去"; past.date = date("2026-10-20T00:00:00+09:00")
+        var hours = PersonalCountdown(); hours.title = "時間"; hours.kind = .hours
+        hours.date = now; hours.targetHours = 4; hours.hoursPerDay = 2
+        var tie = today; tie.id = UUID(); tie.title = "同日"
+        let entries = [later, today, hours, past, tie]
+        XCTAssertEqual(PersonalCountdown.sortedByRemainingDays(entries, now: now).map(\.id),
+                       [past, today, tie, hours, later].map(\.id))
+        try hours.updateCompletedHours(4)
+        XCTAssertEqual(PersonalCountdown.sortedByRemainingDays([later, hours, past], now: now).map(\.id),
+                       [past, hours, later].map(\.id))
+        XCTAssertEqual(entries.first, later)
+    }
     func testCalendarDaysAcrossMidnightAndLeapDay() {
         var entry = PersonalCountdown(); entry.title = "40歳まで"
         entry.date = date("2028-03-01T00:00:00+09:00")
