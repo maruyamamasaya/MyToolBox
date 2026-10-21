@@ -34,7 +34,20 @@ import AppKit
         RunLoop.main.add(timer, forMode: .common); pulseTimer = timer
     }
     var onPress: (() -> Void)?
-    override var intrinsicContentSize: NSSize { NSSize(width: max(24, cells.reduce(0) { $0 + $1.width }), height: NSStatusBar.system.thickness) }
+    // Keep spacing between metrics, but trim padding at the two outer edges.
+    private func edgePadding(_ cell: Cell, leading: Bool) -> CGFloat {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: cell.singleLine ? (compact ? 11 : 12) : (compact ? 8 : 9), weight: cell.singleLine ? .medium : .semibold)
+        let strings = cell.singleLine ? [cell.bottom] : [cell.top, cell.bottom]
+        let textWidth = strings.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
+        let contentWidth = textWidth + (cell.memoryIcon ? 23 : 0)
+        let padding = cell.rightAligned
+            ? (leading ? cell.width - contentWidth - (compact ? 4 : 6) : (compact ? 4 : 6))
+            : (cell.width - contentWidth) / 2
+        return max(0, padding - 2)
+    }
+    private var leadingTrim: CGFloat { cells.first.map { edgePadding($0, leading: true) } ?? 0 }
+    private var trailingTrim: CGFloat { cells.last.map { edgePadding($0, leading: false) } ?? 0 }
+    override var intrinsicContentSize: NSSize { NSSize(width: max(24, cells.reduce(0) { $0 + $1.width } - leadingTrim - trailingTrim), height: NSStatusBar.system.thickness) }
     override init(frame: NSRect) {
         super.init(frame: frame)
         setAccessibilityElement(true); setAccessibilityRole(.button)
@@ -129,7 +142,7 @@ import AppKit
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
         let lineHeight: CGFloat = compact ? 9 : 10
         let bottomY = (bounds.height - lineHeight * 2) / 2
-        var x: CGFloat = 0
+        var x: CGFloat = -leadingTrim
         for cell in cells {
             if cell.singleLine {
                 let singleFont = NSFont.monospacedDigitSystemFont(ofSize: compact ? 11 : 12, weight: .medium)
