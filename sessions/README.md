@@ -140,3 +140,5 @@ Request / Investigation / Changes / Files Changed / Validation / Result / Remain
 - [2026-10-21：ポモドーロの休憩演出](2026-10-21-pomodoro-break-effects.md)
 
 - [2026-10-21：ウィンドウ配置のデプロイ不整合対策](2026-10-21-window-manager-deployment.md)
+
+- [2026-10-21：OSによる本番デプロイ保護](2026-10-21-os-deployment-protection.md)

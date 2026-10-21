@@ -296,3 +296,7 @@ Fullは全カタログhelperのID・実行ファイル・祝日・マイク用�
 ## デプロイ安全性の回帰
 
 `python3 scripts/test_deploy.py`：親不在の常駐helper・開発コピーによる配置拒否、事前検査の無変更、コピー中の起動による中止、配置検証失敗時の復旧、配置後起動時の旧版保持、成功時の整理を隔離フォルダで確認する。実プロセスの終了・本番配置はしない。
+
+## OS保護の検証
+
+`python3 scripts/test_protected_deploy.py` はリンク拒否・root所有境界・全プロセス停止・署名不一致拒否・新helper署名固定を通常権限で確認する。Fast／Fullに含む。実OSの拒否試験は管理者が初回導入する際、一時領域のfixtureにのみ実施する。実行不能なら導入済みと扱わない。[運用](docs/PROTECTED_DEPLOYMENT.md)。

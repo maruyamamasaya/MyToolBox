@@ -57,6 +57,11 @@ def validate_identity(source, target):
 
 def deploy(source, target, apply=False):
     source, target = source.resolve(), target.resolve()
+    privileged = Path('/Library/Application Support/MyToolBoxDeployment/protected_deploy.py')
+    if target == Path('/Applications/MyToolBox.app') and privileged.exists():
+        raise RuntimeError('OS保護済みです。管理者認証で root 所有の専用更新処理を使ってください：'
+                           'sudo /usr/bin/python3 -I "' + str(privileged) + '" '
+                           + ('apply' if apply else 'check'))
     if source == target or source in target.parents or target in source.parents:
         raise RuntimeError('source and target must be separate app bundles')
     if not source.is_dir() or not target.is_dir():
