@@ -112,7 +112,8 @@ import UniformTypeIdentifiers
         model.load()
         try check(model.busy && !model.canClose, "Git load prevents helper termination")
         model.load(); try await wait { model.busy }
-        try check(model.rows.count == 1 && selectedLocalRepo() && model.message == draftMessage && model.canClose, "Git discovery retains folder selection and message")
+        try check(model.rows.count == 1 && model.selected.isEmpty && model.message == draftMessage && model.canClose, "Git discovery retains folder selection and message")
+        model.selected = Set(model.rows.map(\.path))
         try check(GitBatchModel(defaults: defaults).root == repos.path, "Git root persists for a new model")
         var decisions = 0
         model.run(.check)

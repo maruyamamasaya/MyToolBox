@@ -36,6 +36,8 @@ import AppKit
     var onPress: (() -> Void)?
     // Keep spacing between metrics, but trim padding at the two outer edges.
     private func edgePadding(_ cell: Cell, leading: Bool) -> CGFloat {
+        // Keep the reserved throughput width even when this cell is at the left edge.
+        if cell.rightAligned && leading { return 0 }
         let font = NSFont.monospacedDigitSystemFont(ofSize: cell.singleLine ? (compact ? 11 : 12) : (compact ? 8 : 9), weight: cell.singleLine ? .medium : .semibold)
         let strings = cell.singleLine ? [cell.bottom] : [cell.top, cell.bottom]
         let textWidth = strings.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
@@ -103,8 +105,8 @@ import AppKit
             if id == "network" {
                 let received = text(id, "受信速度"); let sent = text(id, "送信速度")
                 var cell = makeCell("↓" + received, "↑" + sent)
-                // Reserve room across digit/unit changes, plus a small breathing space.
-                cell.width = max(cell.width, makeCell("↓99.9MB/s", "↑99.9MB/s").width + 3)
+                // Reserve the usual throughput range without extra outer breathing space.
+                cell.width = max(cell.width, makeCell("↓99.9MB/s", "↑99.9MB/s").width)
                 cell.rightAligned = true
                 cell.topSeverity = received.hasSuffix("MB/s") ? .warning : .normal
                 cell.bottomSeverity = sent.hasSuffix("MB/s") ? .warning : .normal
@@ -175,15 +177,17 @@ import AppKit
         let transform = NSAffineTransform()
         transform.translateX(by: origin.x, yBy: origin.y); transform.concat()
         color.setStroke(); color.setFill()
+        // Pixel-aligned silhouette: three evenly spaced chips and a keyed contact edge.
         let board = NSBezierPath(roundedRect: NSRect(x: 0.5, y: 2.5, width: 19, height: 9), xRadius: 1, yRadius: 1)
         board.lineWidth = 1; board.stroke()
         for x: CGFloat in [3, 8, 13] {
-            let chip = NSBezierPath(rect: NSRect(x: x, y: 5, width: 3, height: 4))
-            chip.lineWidth = 0.8; chip.stroke()
+            NSBezierPath(roundedRect: NSRect(x: x, y: 5, width: 4, height: 4),
+                                     xRadius: 0.5, yRadius: 0.5).fill()
         }
         for x: CGFloat in [2, 4, 6, 8, 12, 14, 16, 18] {
-            NSRect(x: x, y: 0, width: 1, height: 2).fill()
+            NSRect(x: x, y: 1, width: 1, height: 2).fill()
         }
+        // The central gap in the contacts is the module's locating notch.
         NSGraphicsContext.restoreGraphicsState()
     }
     override func mouseDown(with event: NSEvent) { onPress?() }

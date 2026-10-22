@@ -36,6 +36,30 @@ import AppKit
             store.snapshot = snapshot
         }
         let view = StatusStrip(frame: .zero)
+        let savedSnapshot = store.snapshot
+        let savedPreferences = store.preferences
+        for compact in [false, true] {
+            for order in [["network", "cpu"], ["cpu", "network"], ["network"]] {
+                store.preferences.compact = compact
+                store.preferences.order = order
+                store.preferences.hidden = []
+                var widths: [CGFloat] = []
+                for rate in [0.0, 100, 9_900, 10_000, 99_000, 100_000, 9_900_000, 99_900_000] {
+                    var snapshot = savedSnapshot!
+                    snapshot.readings = [
+                        Reading("network", "Network", ["受信速度": Metric(rate, "B/s"), "送信速度": Metric(rate / 2, "B/s")]),
+                        Reading("cpu", "CPU", ["使用率": Metric(25, "%")])
+                    ]
+                    store.snapshot = snapshot
+                    view.update(store: store)
+                    widths.append(view.intrinsicContentSize.width)
+                }
+                precondition(Set(widths).count == 1, "Throughput changed strip width: \(widths)")
+            }
+        }
+        store.snapshot = savedSnapshot
+        store.preferences = savedPreferences
+        print("PASS: throughput width stable across decimal/unit boundaries, both sizes and edge positions")
         view.appearance = NSAppearance(named: .darkAqua)
         view.update(store: store)
         view.frame = NSRect(origin: .zero, size: view.intrinsicContentSize)

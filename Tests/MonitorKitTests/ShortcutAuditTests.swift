@@ -13,4 +13,14 @@ final class ShortcutAuditTests: XCTestCase {
         let sameApp = AuditedShortcut(owner: "A", action: "Contextual", keyCode: 40, modifiers: 256, global: false, source: "menu")
         XCTAssertEqual(AuditedShortcut.candidates(in: [a, sameApp]).count, 2)
     }
+    func testDisabledMenuDoesNotProduceConflictButUnknownRemainsCandidate() {
+        let global = AuditedShortcut(owner: "macOS", action: "System", keyCode: 40, modifiers: 256, global: true, source: "setting", availability: .configured)
+        let disabled = AuditedShortcut(owner: "App", action: "Unavailable", keyCode: 40, modifiers: 256, global: false, source: "menu", availability: .disabled)
+        let enabled = AuditedShortcut(owner: "App", action: "Available", keyCode: 40, modifiers: 256, global: false, source: "menu", availability: .enabled)
+        let unknown = AuditedShortcut(owner: "Other", action: "Unknown", keyCode: 40, modifiers: 256, global: false, source: "menu")
+        XCTAssertTrue(AuditedShortcut.candidates(in: [global, disabled]).isEmpty)
+        XCTAssertEqual(AuditedShortcut.candidates(in: [global, disabled, enabled, unknown]), Set([global.id, enabled.id, unknown.id]))
+        XCTAssertEqual(unknown.availability, .unknown)
+    }
+
 }

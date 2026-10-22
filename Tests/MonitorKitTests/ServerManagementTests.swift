@@ -1,4 +1,5 @@
 import XCTest
+import Darwin
 @testable import MonitorKit
 
 final class ServerManagementTests: XCTestCase {
@@ -89,6 +90,27 @@ final class ServerManagementTests: XCTestCase {
         XCTAssertEqual(ServerCheck.musicLaunchd.command.1.first, "blame")
         XCTAssertTrue(ServerCheck.musicLaunchd.command.1.last!.hasSuffix("/local.mymusic.cardinal-server"))
         XCTAssertTrue(ServerCheck.musicLaunchd.command.1.last!.hasPrefix("gui/"))
+    }
+    func testTaskRelayRequiresApprovedAddressPortAndPython() {
+        XCTAssertEqual(parse(.taskRelayListener, "p123\ncPython\nn192.168.0.35:8778").state, .confirmed)
+        for address in ["*:8778", "127.0.0.1:8778", "192.168.0.36:8778", "[::]:8778"] {
+            XCTAssertEqual(parse(.taskRelayListener, "p123\ncpython3.15\nn" + address).state, .attention)
+        }
+        XCTAssertEqual(parse(.taskRelayListener, "p123\ncPython\nn192.168.0.35:8768").state, .unavailable)
+        XCTAssertEqual(parse(.taskRelayListener, "cPython\nn192.168.0.35:8778").state, .unavailable)
+        XCTAssertEqual(parse(.taskRelayListener, "").state, .unavailable)
+        let other = parse(.taskRelayListener, "p123\ncprivate-secret\nn192.168.0.35:8778")
+        XCTAssertEqual(other.state, .attention)
+        XCTAssertFalse(other.detail.contains("secret"))
+        XCTAssertEqual(parse(.taskRelayListener, "p123\ncPython\nn192.168.0.35:8778\np124\ncnode\nn*:8778").state, .attention)
+    }
+    func testTaskRelayLaunchdUsesFixedUserServiceWithoutExposingOutput() {
+        XCTAssertEqual(ServerCheck.taskRelayLaunchd.command.1, ["blame", "gui/\(getuid())/local.CalendarTaskApp.DotLocalRelay"])
+        XCTAssertEqual(ServerCheck.taskRelayListener.command.1, ["-nP", "-a", "-iTCP:8778", "-sTCP:LISTEN", "-Fpcn"])
+        XCTAssertEqual(parse(.taskRelayLaunchd, "").state, .unavailable)
+        let row = parse(.taskRelayLaunchd, "private-secret")
+        XCTAssertEqual(row.state, .confirmed)
+        XCTAssertFalse(row.detail.contains("secret"))
     }
     private func parse(_ item: ServerCheck, _ output: String) -> ServerCheckReading {
         ServerManagementCollector.parse(item, result: .init(output: output))

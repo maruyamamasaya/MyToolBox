@@ -158,51 +158,67 @@ import ApplicationServices
 }
 
 struct WindowManagerView: View {
-    @ObservedObject var model = WindowManagerModel.shared
+    @ObservedObject var model: WindowManagerModel
+    @State private var expanded: Bool
+    @State private var showsPermission = false
+    @MainActor init(model: WindowManagerModel? = nil, initiallyExpanded: Bool = false) {
+        self.model = model ?? .shared; _expanded = State(initialValue: initiallyExpanded)
+    }
     var body: some View {
-        ToolPage("ウィンドウマネージャー", subtitle: "使いたい位置へ、ウィンドウをすばやく配置", symbol: "rectangle.split.2x2", tint: .cyan) {
+        VStack(spacing: 8) {
+            HStack {
+                Label("ウィンドウ配置", systemImage: "rectangle.split.2x2").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                ThemeMenu()
+            }
+            HStack {
+                Text("対象：\(model.targetName)").font(.subheadline.bold()).lineLimit(1)
+                Spacer()
+                Button { model.refresh() } label: { Image(systemName: "arrow.clockwise").frame(width: 24, height: 24) }.accessibilityLabel("対象と許可を再確認")
+            }
+            Toggle("グローバルショートカット", isOn: Binding(get: { model.shortcutsRequested }, set: { model.setShortcuts($0) })).toggleStyle(.checkbox)
+                .frame(maxWidth: .infinity, alignment: .leading)
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("対象アプリ：\(model.targetName)").font(.headline)
-                            Text("MyToolBoxを開く直前に使っていたアプリの、選択中のウィンドウを操作します。").font(.caption).foregroundStyle(.secondary)
-                            Label(model.trusted ? "アクセシビリティ：許可済み" : "アクセシビリティ：許可が必要", systemImage: model.trusted ? "checkmark.shield" : "lock.shield")
+                VStack(alignment: .leading, spacing: 10) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 6) {
+                        ForEach(WindowLayout.allCases) { layout in
+                            Button { model.apply(layout) } label: {
+                                VStack(spacing: 4) {
+                                    LayoutPreview(layout: layout).frame(width: expanded ? 64 : 40, height: expanded ? 42 : 26)
+                                    Text(layout.title).font(.caption).lineLimit(1)
+                                    if let key = WindowManagerModel.keys.first(where: { $0.0 == layout })?.2 { Text("⌃⌥" + key).font(.caption2).foregroundStyle(.secondary) }
+                                }.frame(maxWidth: .infinity, minHeight: expanded ? 100 : 68).contentShape(Rectangle())
+                            }.disabled(!model.trusted)
+                        }
+                    }
+                    DisclosureGroup(isExpanded: $showsPermission) {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Button("許可を要求") { model.requestPermission() }
-                                Button("システム設定を開く") { model.openSettings() }
-                                Button("許可を再確認") { model.refresh() }
+                                Button("設定を開く") { model.openSettings() }
                             }
                             if !model.trusted {
-                                Text("本体MyToolBoxとは別に、独立版「ウィンドウマネージャー」の許可が必要です。").font(.caption).foregroundStyle(.secondary)
+                                Text("本体とは別に、独立版「ウィンドウマネージャー」の許可が必要です。").font(.caption).foregroundStyle(.secondary)
                                 Button("許可対象をFinderで表示") { model.revealPermissionApp() }
                             }
-                        }
+                        }.padding(.top, 6)
+                    } label: {
+                        Label(model.trusted ? "アクセシビリティ：許可済み" : "アクセシビリティ：許可が必要", systemImage: model.trusted ? "checkmark.shield" : "lock.shield").font(.caption)
                     }
-                    ToolCard {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
-                            ForEach(WindowLayout.allCases) { layout in
-                                Button { model.apply(layout) } label: {
-                                    VStack(spacing: 7) {
-                                        LayoutPreview(layout: layout).frame(width: 52, height: 34)
-                                        Text(layout.title).font(.caption)
-                                        if let key = WindowManagerModel.keys.first(where: { $0.0 == layout })?.2 { Text("⌃⌥" + key).font(.caption2).foregroundStyle(.secondary) }
-                                    }.frame(maxWidth: .infinity, minHeight: 85)
-                                }.disabled(!model.trusted)
-                            }
-                        }
-                    }
-                    ToolCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Toggle("グローバルショートカット", isOn: Binding(get: { model.shortcutsRequested }, set: { model.setShortcuts($0) }))
-                            Text("Control + Option と表示のキーで配置。ON/OFFは再起動後も保持します。キー割り当ては固定です。").font(.caption).foregroundStyle(.secondary)
-                            Text(model.status).font(.callout).textSelection(.enabled)
-                        }
-                    }
-                    ToolFootnote(text: "Dock・メニューバーを除く領域に配置します。復元位置はアプリ終了まで保持。フルスクリーン・固定サイズなど、操作できないウィンドウもあります。")
-                }.padding(24)
+                    Text("直前に使っていたアプリの選択中ウィンドウが対象です。Control + Optionと表示のキーで配置。ON/OFFを保持します。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.padding(2)
             }
-        }.frame(width: 720, height: 690).onAppear { model.refresh() }
+            Text(model.status).font(.caption).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+            Text("復元位置は終了まで保持。フルスクリーン・固定サイズなどは操作できない場合があります。")
+                .font(.caption2).foregroundStyle(.secondary)
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 460, height: 620)))
+            .frame(minWidth: expanded ? 800 : 440, idealWidth: expanded ? 1100 : 460, minHeight: expanded ? 600 : 540, idealHeight: expanded ? 850 : 620)
+            .onAppear { model.refresh() }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in model.refresh() }
     }
 }

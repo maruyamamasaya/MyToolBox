@@ -12,6 +12,8 @@ import SwiftUI
             .init(item: .musicListener, state: .confirmed, detail: "Python の TCP 8768 待受を確認。音楽再生・認証・別端末からの到達性は未確認", checkedAt: now),
             .init(item: .musicLaunchd, state: .confirmed, detail: "固定サービスの実行理由に応答あり（launchctl blame による参考情報）", checkedAt: now),
             .init(item: .musicLocalListener, state: .confirmed, detail: "Python の TCP 8769 はこのMac内だけで待受。設定画面の内部用ポートです。8768とのPID一致・設定APIの動作は未確認", checkedAt: now),
+            .init(item: .taskRelayListener, state: .confirmed, detail: "Python の 192.168.0.35:8778 待受を確認。常駐PIDとの一致・TLS・端末認証・iPhoneからの到達性は未確認", checkedAt: now),
+            .init(item: .taskRelayLaunchd, state: .confirmed, detail: "固定サービスの実行理由に応答あり（launchctl blame による参考情報）", checkedAt: now),
             .init(item: .listener, state: .confirmed, detail: "PID 123 ／ node ／ TCP 8080\nポートの所有者情報です。launchd の PID との一致は未検証", checkedAt: now),
             .init(item: .launchd, state: .confirmed, detail: "固定サービスの実行理由に応答あり（launchctl blame による参考情報）", checkedAt: now),
             .init(item: .tailscale, state: .confirmed, detail: "接続状態：Running ／ 自端末：オンライン\nVPN 経由の端末間到達性は未検証", checkedAt: now),
@@ -42,7 +44,7 @@ import SwiftUI
                     try bitmap.representation(using: .png, properties: [:])!.write(to: directory.appendingPathComponent("\(theme.rawValue)-\(name)-\(Int(width)).png"))
                     precondition(host.fittingSize.width <= size.width && host.fittingSize.height <= size.height)
                     precondition(model.busy == (name == "updating"))
-                    precondition(model.rows.count == (name == "empty" ? 0 : name == "unavailable" ? 2 : 8))
+                    precondition(model.rows.count == (name == "empty" ? 0 : name == "unavailable" ? 2 : 10))
                     print("PASS \(theme.rawValue) \(name) \(width)")
                 }
             }

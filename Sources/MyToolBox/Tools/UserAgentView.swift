@@ -66,7 +66,9 @@ struct UserAgentView: View {
     @State private var pasted: String
     @State private var tab: Int
     @State private var copyStatus = ""
-    init(model: UserAgentModel? = nil, initialTab: Int = 0, initialPasted: String = "") {
+    @State private var expanded: Bool
+    init(model: UserAgentModel? = nil, initialTab: Int = 0, initialPasted: String = "", initiallyExpanded: Bool = false) {
+        _expanded = State(initialValue: initiallyExpanded)
         _model = StateObject(wrappedValue: model ?? UserAgentModel())
         _tab = State(initialValue: initialTab); _pasted = State(initialValue: initialPasted)
     }
@@ -77,20 +79,23 @@ struct UserAgentView: View {
     }
     private var canCopyLocal: Bool { !model.busy && !model.userAgent.isEmpty }
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 8) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("User-Agent Viewer").font(theme.font(22, weight: .bold, design: .rounded))
-                    Text("端末の情報を、見やすく。").font(.caption).foregroundStyle(.secondary)
+                    Text("User-Agent Viewer").font(.headline)
+
                 }
                 Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
                 ThemeMenu()
             }
             Picker("表示", selection: $tab) {
                 Text("この端末").tag(0); Text("詳しい情報").tag(1); Text("別のUAを解析").tag(2)
             }.pickerStyle(.segmented).labelsHidden()
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
                     if tab == 2 { externalAnalysis }
                     else if tab == 1 { details }
                     else { overview }
@@ -109,15 +114,16 @@ struct UserAgentView: View {
                 }
             }
             if !copyStatus.isEmpty { Text(copyStatus).font(.caption).foregroundStyle(.secondary) }
-        }.padding(16).controlSize(.regular)
-            .frame(minWidth: 460, idealWidth: 520, minHeight: 580, idealHeight: 640)
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 440, height: 560)))
+            .frame(minWidth: expanded ? 800 : 420, idealWidth: expanded ? 1100 : 440, minHeight: expanded ? 600 : 500, idealHeight: expanded ? 850 : 560)
             .background { UserAgentProbe(model: model).opacity(0).allowsHitTesting(false).accessibilityHidden(true) }
             .onChange(of: pasted) { _, _ in copyStatus = "" }
             .onChange(of: tab) { _, _ in copyStatus = "" }
             .onChange(of: model.userAgent) { _, _ in copyStatus = "" }
     }
     private var overview: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("取得元：MyToolBox 内蔵WebKit").font(.caption).foregroundStyle(.secondary)
             VStack(spacing: 0) {
                 summaryRow("ブラウザ", value: "内蔵WebKit", detail: model.userAgent.isEmpty ? "UAは" + (model.busy ? "取得中" : "取得不可") : "UAの表記：" + localInfo.browser, symbol: "globe", color: .cyan)
@@ -125,7 +131,7 @@ struct UserAgentView: View {
                 summaryRow("OS", value: runtimeOS, detail: model.userAgent.isEmpty ? "実行中のOS" : "UAの表記：" + localInfo.os, symbol: "desktopcomputer", color: .purple)
                 Divider().opacity(0.4)
                 summaryRow("端末", value: model.userAgent.isEmpty ? (model.busy ? "取得中…" : "取得不可") : deviceName(localInfo.device), detail: "User-Agentから推定", symbol: "laptopcomputer", color: .orange)
-            }.padding(12).background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius))
+            }.padding(8).background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius))
             uaPanel(model.userAgent, canCopy: canCopyLocal)
             Text("内蔵WebKitの情報を表示しています。UAのOS表記は互換性のため実際のOSと異なる場合があります。")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -137,10 +143,10 @@ struct UserAgentView: View {
                 .frame(width: 38, height: 38).background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.caption).foregroundStyle(.secondary)
-                Text(value).font(theme.font(17, weight: .semibold)).textSelection(.enabled)
+                Text(value).font(theme.font(expanded ? 17 : 14, weight: .semibold)).textSelection(.enabled)
                 Text(detail).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             }.frame(maxWidth: .infinity, alignment: .leading)
-        }.padding(.vertical, 9)
+        }.padding(.vertical, expanded ? 9 : 4)
     }
     private func uaPanel(_ ua: String, canCopy: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -154,7 +160,7 @@ struct UserAgentView: View {
                     .font(.system(size: 13, design: .monospaced)).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
-            }.frame(height: 115).background(theme.panel, in: RoundedRectangle(cornerRadius: 8))
+            }.frame(height: expanded ? 180 : 90).background(theme.panel, in: RoundedRectangle(cornerRadius: 8))
         }
     }
     private var details: some View {
@@ -165,7 +171,7 @@ struct UserAgentView: View {
             }
             ForEach(model.fields.indices, id: \.self) { index in
                 HStack(alignment: .top, spacing: 12) {
-                    Text(model.fields[index].0).font(.caption).foregroundStyle(.secondary).frame(width: 170, alignment: .leading)
+                    Text(model.fields[index].0).font(.caption).foregroundStyle(.secondary).frame(width: expanded ? 170 : 135, alignment: .leading)
                     Text(model.fields[index].1).font(.system(size: 13)).textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }.padding(.vertical, 6)
@@ -199,7 +205,7 @@ struct UserAgentView: View {
                     summaryRow("OS", value: info.os, detail: "UAによる表記", symbol: "desktopcomputer", color: .purple)
                     Divider().opacity(0.4)
                     summaryRow("端末", value: deviceName(info.device), detail: "UAによる推定", symbol: "iphone", color: .orange)
-                }.padding(12).background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius))
+                }.padding(8).background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius))
                 Button { copy("ブラウザ: \(info.browser)\nOS: \(info.os)\nデバイス種別: \(info.device)\nUser-Agent: \(pasted)") } label: {
                     Label("解析結果をコピー", systemImage: "doc.on.doc").frame(minHeight: 28)
                 }

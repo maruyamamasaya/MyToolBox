@@ -32,7 +32,7 @@ struct ServerManagementView: View {
                 Image(systemName: "server.rack").font(.title2).foregroundStyle(.cyan)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("サーバー管理").font(.title3.bold())
-                    Text("このMacの写真・音楽サーバー").font(.caption).foregroundStyle(.secondary)
+                    Text("このMacの写真・音楽・TaskApp中継").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
                 ThemeMenu()
@@ -48,6 +48,15 @@ struct ServerManagementView: View {
                             HStack(alignment: .top, spacing: 14) { photoCard; musicCard }
                         } else {
                             photoCard; musicCard
+                        }
+                        serverCard(.taskRelayListener, title: "TaskApp 中継", app: "CalendarTaskApp · Dot ↔ iPhone", symbol: "calendar.badge.clock", port: "192.168.0.35:8778 · TLS", success: "待受あり",
+                                   explanation: "タスクとDotのひとことを保存・配信する窓口です。ひとことの定期生成は含みません。")
+                        ToolCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                diagnostic(.taskRelayLaunchd)
+                                Text("ログイン時に起動し、終了後は最低30秒間隔で再試行します。スリープ中・ログイン前の稼働は保証されません。再ログイン・スリープ復帰は未検証です。")
+                                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                         if model.busy {
                             HStack(spacing: 8) {
@@ -189,7 +198,7 @@ struct ServerManagementView: View {
         guard let status, let menu = status.menu else { return }
         var descriptions: [String] = []
         menu.removeAllItems()
-        for (item, name) in [(ServerCheck.health, "写真"), (.musicListener, "音楽")] {
+        for (item, name) in [(ServerCheck.health, "写真"), (.musicListener, "音楽"), (.taskRelayListener, "TaskApp中継")] {
             let state = ServerIndicator.state(for: item, readings: readings)
             let label = state == .confirmed ? (item == .health ? "HTTP応答あり" : "待受あり") : state?.rawValue ?? "未確認・期限切れ"
             descriptions.append(name + "：" + label)

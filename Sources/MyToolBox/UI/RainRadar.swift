@@ -181,11 +181,13 @@ private struct RainRadarView: View {
     @discardableResult func updateMenuButton(_ button: NSButton) -> CGFloat {
         let strip = (button.subviews.first { $0 is WeatherMenuStrip } as? WeatherMenuStrip) ?? WeatherMenuStrip(frame: .zero)
         if strip.superview == nil { button.addSubview(strip) }
-        strip.update(title: menuTitle, icon: forecast?.menuIcon() ?? .unknown)
+        strip.update(title: menuTitle, icon: forecast?.menuIcon() ?? .unknown,
+                     precipitation: forecast?.upcomingPrecipitation().first?.percent.map { "\($0)%" } ?? "—")
         button.title = ""; button.image = nil
         strip.frame = NSRect(origin: .zero, size: strip.intrinsicContentSize)
-        button.toolTip = menuToolTip
-        button.setAccessibilityLabel("気象庁 今日の予報 " + (forecast?.text ?? "未取得") + " 上段 気温・下段 湿度 " + menuTitle)
+        button.toolTip = menuToolTip + "\n降水確率：" + (forecast?.upcomingPrecipitation().first.map { $0.label + " " + ($0.percent.map { "\($0)%" } ?? "—") } ?? "未取得")
+        button.setAccessibilityLabel("気象庁 今日の予報 " + (forecast?.text ?? "未取得") + " 上段 気温・下段 湿度 " + menuTitle
+                                     + " 降水確率 " + (forecast?.upcomingPrecipitation().first?.percent.map { "\($0)%" } ?? "未取得"))
         return strip.intrinsicContentSize.width
     }
     var menuToolTip: String {
@@ -293,6 +295,13 @@ struct JMAWeatherSummaryView: View {
 /// Uses the same 9pt semibold digits and 10pt row spacing as StatusStrip.
 @MainActor final class WeatherMenuStrip: NSView {
     private var rows = ["…°C", "…%"]
+    private var precipitation = "—"
+    private var precipitationWidth: CGFloat {
+        ceil((["降水確率", "100%"] as [NSString]).map { $0.size(withAttributes: [.font: font]).width }.max() ?? 36)
+    }
+    private var observationWidth: CGFloat {
+        ceil(rows.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 34)
+    }
     private(set) var icon = JMAWeatherIcon.unknown
     private let font = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .semibold)
     override init(frame: NSRect) {
@@ -301,14 +310,14 @@ struct JMAWeatherSummaryView: View {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    func update(title: String, icon: JMAWeatherIcon = .unknown) {
+    func update(title: String, icon: JMAWeatherIcon = .unknown, precipitation: String = "—") {
+        self.precipitation = precipitation
         self.icon = icon
         rows = title.components(separatedBy: " ")
         invalidateIntrinsicContentSize(); needsDisplay = true
     }
     override var intrinsicContentSize: NSSize {
-        let width = rows.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 34
-        return NSSize(width: 22 + ceil(max(34, width + 12)), height: NSStatusBar.system.thickness)
+        NSSize(width: 20 + observationWidth + 4 + precipitationWidth + 2, height: NSStatusBar.system.thickness)
     }
     static func symbolRect(size: NSSize, in bounds: NSRect) -> NSRect {
         guard size.width > 0, size.height > 0 else { return .zero }
@@ -340,12 +349,17 @@ struct JMAWeatherSummaryView: View {
             rect.fill(using: .sourceIn)
             return true
         }
-        tinted.draw(in: NSRect(x: 3, y: (bounds.height - 16) / 2, width: 16, height: 16))
+        tinted.draw(in: NSRect(x: 1, y: (bounds.height - 16) / 2, width: 16, height: 16))
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
         let bottomY = (bounds.height - 20) / 2
         for (row, text) in rows.prefix(2).enumerated() {
             let width = (text as NSString).size(withAttributes: attributes).width
-            (text as NSString).draw(at: NSPoint(x: 22 + (bounds.width - 22 - width) / 2,
+            (text as NSString).draw(at: NSPoint(x: 20 + (observationWidth - width) / 2,
+                                               y: bottomY + (row == 0 ? 10 : 0)), withAttributes: attributes)
+        }
+        for (row, text) in ["降水確率", precipitation].enumerated() {
+            let width = (text as NSString).size(withAttributes: attributes).width
+            (text as NSString).draw(at: NSPoint(x: 20 + observationWidth + 4 + (precipitationWidth - width) / 2,
                                                y: bottomY + (row == 0 ? 10 : 0)), withAttributes: attributes)
         }
     }

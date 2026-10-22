@@ -2,7 +2,7 @@ import Foundation
 import Darwin
 
 public enum ServerCheck: String, CaseIterable, Sendable, Identifiable {
-    case health, musicListener, musicLaunchd, musicLocalListener, launchd, listener, tailscale, serve
+    case health, musicListener, musicLaunchd, musicLocalListener, taskRelayListener, taskRelayLaunchd, launchd, listener, tailscale, serve
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -10,6 +10,8 @@ public enum ServerCheck: String, CaseIterable, Sendable, Identifiable {
         case .musicListener: return "音楽サーバー TCP 8768"
         case .musicLaunchd: return "常駐サービス：MyMusic LAN Cardinal"
         case .musicLocalListener: return "内部ポート TCP 8769"
+        case .taskRelayListener: return "TaskApp 中継 TCP 8778"
+        case .taskRelayLaunchd: return "常駐サービス：CalendarTaskApp DotLocalRelay"
         case .launchd: return "launchd：com.baby-media-web"
         case .listener: return "TCP 8080 の待受"
         case .tailscale: return "Tailscale 接続"
@@ -23,6 +25,8 @@ public enum ServerCheck: String, CaseIterable, Sendable, Identifiable {
         // blame does not retrieve the job's environment, unlike launchctl print.
         case .launchd: return ("/bin/launchctl", ["blame", "system/com.baby-media-web"])
         case .musicLaunchd: return ("/bin/launchctl", ["blame", "gui/\(getuid())/local.mymusic.cardinal-server"])
+        case .taskRelayLaunchd: return ("/bin/launchctl", ["blame", "gui/\(getuid())/local.CalendarTaskApp.DotLocalRelay"])
+        case .taskRelayListener: return ("/usr/sbin/lsof", ["-nP", "-a", "-iTCP:8778", "-sTCP:LISTEN", "-Fpcn"])
         case .musicLocalListener: return ("/usr/sbin/lsof", ["-nP", "-a", "-iTCP:8769", "-sTCP:LISTEN", "-Fpcn"])
         case .musicListener: return ("/usr/sbin/lsof", ["-nP", "-a", "-iTCP:8768", "-sTCP:LISTEN", "-Fpcn"])
         case .listener: return ("/usr/sbin/lsof", ["-nP", "-a", "-iTCP:8080", "-sTCP:LISTEN", "-Fpcn"])
@@ -48,7 +52,7 @@ public struct ServerCheckReading: Sendable, Identifiable {
 public actor ServerManagementCollector {
     public init() {}
     public func read(menuOnly: Bool = false) -> [ServerCheckReading] {
-        let items: [ServerCheck] = menuOnly ? [.health, .musicListener] : ServerCheck.allCases
+        let items: [ServerCheck] = menuOnly ? [.health, .musicListener, .taskRelayListener] : ServerCheck.allCases
         return items.map { item in
             let (path, arguments) = item.command
             let environment = item == .tailscale || item == .serve ? ["TAILSCALE_BE_CLI": "1"] : [:]
@@ -72,11 +76,11 @@ public actor ServerManagementCollector {
         case .health:
             guard output == "200" else { return reading(.attention, "期待した HTTP 200 応答を確認できません") }
             return reading(.confirmed, "127.0.0.1:8080/health → HTTP 200（ローカル到達性）")
-        case .launchd, .musicLaunchd:
+        case .launchd, .musicLaunchd, .taskRelayLaunchd:
             guard !output.isEmpty else { return reading(.unavailable, "launchd の実行理由を取得できません") }
             return reading(.confirmed, "固定サービスの実行理由に応答あり（launchctl blame による参考情報）")
-        case .musicListener, .musicLocalListener:
-            let port = item == .musicListener ? 8768 : 8769
+        case .musicListener, .musicLocalListener, .taskRelayListener:
+            let port = item == .taskRelayListener ? 8778 : item == .musicListener ? 8768 : 8769
             var exposed = false
             var pid: Int?, name: String?
             var expected = false, other = false
@@ -84,12 +88,17 @@ public actor ServerManagementCollector {
                 if line.hasPrefix("p") { pid = Int(line.dropFirst()); name = nil }
                 if line.hasPrefix("c") { name = String(line.dropFirst()) }
                 if line.hasPrefix("n"), line.hasSuffix(":\(port)"), let pid, pid > 0, let name {
+                    if item == .taskRelayListener && line != "n192.168.0.35:8778" { exposed = true }
                     if item == .musicLocalListener && line != "n127.0.0.1:8769" && line != "n[::1]:8769" { exposed = true }
                     if name == "Python" || name == "python3" || name.hasPrefix("python3.") { expected = true }
                     else { other = true }
                 }
             }
             guard expected || other else { return reading(.unavailable, "TCP \(port) の待受を確認できません。停止とは断定できません") }
+            if item == .taskRelayListener {
+                return reading(expected && !other && !exposed ? .confirmed : .attention,
+                               expected && !other && !exposed ? "Python の 192.168.0.35:8778 待受を確認。常駐PIDとの一致・TLS・端末認証・iPhoneからの到達性は未確認" : "TCP 8778 のプロセスまたは待受IPが承認済みの構成と異なります")
+            }
             if item == .musicLocalListener {
                 return reading(expected && !other && !exposed ? .confirmed : .attention,
                                expected && !other && !exposed ? "Python の TCP 8769 はこのMac内だけで待受。設定画面の内部用ポートです。8768とのPID一致・設定APIの動作は未確認" : "TCP 8769 のプロセスまたは待受範囲が想定と異なります")

@@ -9,19 +9,22 @@ import SwiftUI
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let now = Date()
         let cases: [(String, [ServerCheckReading])] = [
-            ("confirmed", [.init(item: .health, state: .confirmed, detail: "HTTP 200", checkedAt: now), .init(item: .musicListener, state: .confirmed, detail: "Python の TCP 8768 待受を確認", checkedAt: now)]),
+            ("confirmed", [.init(item: .health, state: .confirmed, detail: "HTTP 200", checkedAt: now), .init(item: .musicListener, state: .confirmed, detail: "Python の TCP 8768 待受を確認", checkedAt: now), .init(item: .taskRelayListener, state: .confirmed, detail: "承認済みLAN待受", checkedAt: now)]),
             ("attention", [.init(item: .health, state: .attention, detail: "HTTP 200 を確認できません", checkedAt: now)]),
             ("stale", [.init(item: .health, state: .confirmed, detail: "", checkedAt: now.addingTimeInterval(-151))]),
+            ("task-attention", [.init(item: .taskRelayListener, state: .attention, detail: "待受IPが想定と異なる", checkedAt: now)]),
+            ("task-unavailable", [.init(item: .taskRelayListener, state: .unavailable, detail: "取得不可", checkedAt: now)]),
+            ("task-stale", [.init(item: .taskRelayListener, state: .confirmed, detail: "", checkedAt: now.addingTimeInterval(-151))]),
             ("unknown", [])
         ]
         for (name, rows) in cases {
             for (appearanceName, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
                 let image = ServerStatusImage.make(readings: rows, now: now)
-                precondition(image.size == NSSize(width: 43, height: 22) && !image.isTemplate)
-                let preview = NSImage(size: NSSize(width: 63, height: 28))
+                precondition(image.size == NSSize(width: 66, height: 22) && !image.isTemplate)
+                let preview = NSImage(size: NSSize(width: 86, height: 28))
                 NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
                     preview.lockFocus()
-                    NSColor.windowBackgroundColor.setFill(); NSRect(x: 0, y: 0, width: 63, height: 28).fill()
+                    NSColor.windowBackgroundColor.setFill(); NSRect(x: 0, y: 0, width: 86, height: 28).fill()
                     image.draw(at: NSPoint(x: 10, y: 3), from: .zero, operation: .sourceOver, fraction: 1)
                     preview.unlockFocus()
                 }
@@ -33,7 +36,7 @@ import SwiftUI
         let full = ProcessInfo.processInfo.arguments.contains("--full")
         let rows = await ServerManagementCollector().read(menuOnly: !full)
         for row in rows { print(row.item.rawValue, row.state.rawValue, row.detail) }
-        precondition(rows.map(\.item) == (full ? ServerCheck.allCases : [.health, .musicListener]))
+        precondition(rows.map(\.item) == (full ? ServerCheck.allCases : [.health, .musicListener, .taskRelayListener]))
         print("PASS: actual menu title rendering, missing/stale variants and bounded live collection")
     }
 }

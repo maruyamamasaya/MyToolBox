@@ -93,7 +93,7 @@ Git一括管理：`Tools/GitBatch.swift`（GitBatchWorker／引数配列でGit�
 拡大カレンダー：`ExpandedCalendarView.swift` → `CalendarAlmanac.swift`／生成済み`AlmanacData.swift`。`scripts/update_calendar_almanac.py`で公開暦データ更新、`CalendarAlmanacTests.swift`で2027年写真・正午月齢・閏月・範囲外検証。
 
 ## サーバー管理
-`Sources/MonitorKit/Tools/ServerManagement.swift`、`Sources/MyToolBox/Tools/ServerManagementView.swift`。`ServerManagementCollector` → `ServerManagementModel.refresh` → `ToolWindows.show(.serverManagement)`。詳細はhealth／音楽8768・内部8769・ユーザーlaunchd／写真launchd・8080／Tailscaleを表示時・手動時に照会。ServerMenuControllerは本体のみ2項目を60秒・wake時に確認し、ServerIndicatorで期限判定。UI/ServerStatusImage.swiftが写真／音楽の2段アイコンを描画。tools/VerifyServerMenu.swiftで明暗描画・実取得を検証。関連テスト：`ServerManagementTests`。[仕様](docs/SERVER_MANAGEMENT.md)。
+`Sources/MonitorKit/Tools/ServerManagement.swift`、`Sources/MyToolBox/Tools/ServerManagementView.swift`。`ServerManagementCollector` → `ServerManagementModel.refresh` → `ToolWindows.show(.serverManagement)`。詳細はhealth／音楽8768・内部8769・ユーザーlaunchd／TaskApp中継8778・ユーザーlaunchd／写真launchd・8080／Tailscaleを表示時・手動時に照会。ServerMenuControllerは本体のみ写真・音楽・TaskApp待受の3項目を60秒・wake時に確認し、ServerIndicatorで期限判定。UI/ServerStatusImage.swiftが写真／音楽／TaskAppの2列×2段アイコンを描画。tools/VerifyServerMenu.swiftで明暗描画・実取得を検証。関連テスト：`ServerManagementTests`。[仕様](docs/SERVER_MANAGEMENT.md)。
 
 天気・雨雲：`MonitorKit/Tools/JMAWeather.swift`（JMAWeatherIcon：主な天気の判定） → `UI/RainRadar.swift`（JMAWeatherSummaryModel／RainRadarController）← AppDelegate.toggleRainRadar。`JMAWeatherTests`、`tools/VerifyWeather.swift`。取得・操作は[仕様](docs/WEATHER.md)。
 

@@ -79,7 +79,7 @@ import SwiftUI
             controller.cleanup = { model.stop() }
         case .regexTester: controller = makeWindow(title: tool.title, view: RegexTesterView())
         case .regexBuilder: controller = makeWindow(title: tool.title, view: RegexBuilderView())
-        case .tableBuilder: controller = makeWindow(title: tool.title, view: TableBuilderView())
+        case .tableBuilder: controller = makeWindow(title: tool.title, view: TableBuilderView(initiallyExpanded: true))
         case .csvStatistics: controller = makeWindow(title: tool.title, view: CSVStatisticsView())
         case .jsonWorkspace:
             let model = JSONWorkspaceModel()

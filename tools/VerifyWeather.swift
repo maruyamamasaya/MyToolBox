@@ -76,15 +76,16 @@ import SwiftUI
         let failureButton = NSButton(frame: button.frame)
         absentForecast.updateMenuButton(failureButton)
         guard (failureButton.subviews.first as? WeatherMenuStrip)?.icon == .unknown else { fatalError("missing forecast icon") }
-        let variants = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: NSStatusBar.system.thickness))
+        let variants = NSView(frame: NSRect(x: 0, y: 0, width: 550, height: NSStatusBar.system.thickness))
         for (index, icon) in JMAWeatherIcon.allCases.enumerated() {
             guard let symbol = NSImage(systemSymbolName: icon.symbol, accessibilityDescription: nil) else { fatalError("missing symbol") }
             let fitted = WeatherMenuStrip.symbolRect(size: symbol.size, in: NSRect(x: 0, y: 0, width: 16, height: 16))
             guard abs(fitted.width / fitted.height - symbol.size.width / symbol.size.height) < 0.0001,
                   fitted.width <= 16.0001, fitted.height <= 16.0001 else { fatalError("distorted symbol") }
             print("ASPECT: \(icon.rawValue), original \(symbol.size), fitted \(fitted.size)")
-            let strip = WeatherMenuStrip(frame: NSRect(x: index * 76, y: 0, width: 70, height: Int(NSStatusBar.system.thickness)))
-            strip.update(title: model.menuTitle, icon: icon)
+            let strip = WeatherMenuStrip(frame: NSRect(x: index * 110, y: 0, width: 104, height: Int(NSStatusBar.system.thickness)))
+            strip.update(title: model.menuTitle, icon: icon, precipitation: "30%")
+            strip.setFrameSize(strip.intrinsicContentSize)
             variants.addSubview(strip)
         }
         for (name, appearanceName) in [("dark", NSAppearance.Name.darkAqua), ("light", NSAppearance.Name.aqua)] {

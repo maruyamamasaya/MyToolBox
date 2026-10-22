@@ -99,51 +99,67 @@ import UniformTypeIdentifiers
 struct VideoCompressorView: View {
     @ObservedObject var model: VideoCompressorModel
     @State private var targeted = false
+    @State private var expanded: Bool
+    @State private var showsHelp = false
+    init(model: VideoCompressorModel, initiallyExpanded: Bool = false) {
+        self.model = model; _expanded = State(initialValue: initiallyExpanded)
+    }
     var body: some View {
-        ToolPage("動画圧縮", subtitle: "複数の動画をまとめてMP4へ", symbol: "film", tint: .blue) {
-          ScrollView { VStack(spacing: 12) {
-            ToolCard { VStack(alignment: .leading, spacing: 8) {
-                Text("動画").font(.headline)
-                Button("動画を選択…", action: model.open).disabled(model.busy)
-                Text("ここに動画をドロップ · 最大200本").font(.caption).foregroundStyle(.secondary)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(Array(model.urls.enumerated()), id: \.offset) { _, url in
-                            Text(url.lastPathComponent).font(.caption).lineLimit(2).help(url.path)
-                        }
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                }.frame(height: 90)
-            }}
-            ToolCard { VStack(alignment: .leading, spacing: 8) {
-                Text("圧縮設定").font(.headline)
-                Picker("画質", selection: $model.quality) {
-                    ForEach(VideoCompression.Quality.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }.disabled(model.busy)
-                Text("MP4 · 元動画を保持。容量は内容によって変わります。小さくならない変換結果は保存しません。HDR・字幕・複数音声などは保持されない場合があります。")
-                    .font(.caption).foregroundStyle(.secondary)
-                HStack {
-                    Button("圧縮して保存…", action: model.start).buttonStyle(.borderedProminent)
-                        .disabled(model.busy || model.urls.isEmpty)
-                    if model.busy { Button("キャンセル", action: model.stop) }
+        VStack(spacing: 8) {
+            HStack {
+                Label("動画圧縮", systemImage: "film").font(.headline)
+                Spacer()
+                Button { expanded.toggle() } label: {
+                    Label(expanded ? "小さく戻す" : "拡大", systemImage: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 }
-                if model.busy { ProgressView(value: model.progress) }
-                Text(model.status).font(.caption).textSelection(.enabled)
-            }}
-            if !model.results.isEmpty || model.directory != nil {
-                ToolCard { VStack(alignment: .leading, spacing: 8) {
-                    Text("結果").font(.headline)
-                    if let folder = model.directory { Button("保存先を開く") { NSWorkspace.shared.open(folder) } }
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 7) {
-                            ForEach(Array(model.results.enumerated()), id: \.offset) { _, result in
-                                Text(result).font(.caption).textSelection(.enabled)
-                            }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }.frame(height: 120)
-                }}
+                ThemeMenu()
             }
-          }.padding(12) }
-        }.frame(minWidth: 420, idealWidth: 460, minHeight: 540)
+            HStack {
+                Button("動画を選択…", systemImage: "plus") { model.open() }.disabled(model.busy)
+                Spacer()
+                Text("\(model.urls.count) / 200本").font(.caption).foregroundStyle(.secondary)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 5) {
+                    if model.urls.isEmpty { Text("ここに動画をドロップ").foregroundStyle(.secondary) }
+                    ForEach(Array(model.urls.enumerated()), id: \.offset) { _, url in
+                        Label(url.lastPathComponent, systemImage: "film").font(.caption).lineLimit(2).help(url.path)
+                    }
+                }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            }.frame(height: expanded ? 180 : 90).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+            Picker("画質", selection: $model.quality) {
+                ForEach(VideoCompression.Quality.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.disabled(model.busy)
+            HStack {
+                Button("圧縮して保存…", action: model.start).buttonStyle(.borderedProminent).disabled(model.busy || model.urls.isEmpty)
+                if model.busy { Button("キャンセル", action: model.stop) }
+                Spacer()
+                Button { showsHelp.toggle() } label: { Image(systemName: "questionmark.circle").frame(width: 24, height: 24) }
+                    .accessibilityLabel("圧縮設定と保存の説明")
+                    .popover(isPresented: $showsHelp) {
+                        Text("最大200本をMP4へ変換します。元動画を保持し、容量が小さくならない変換結果は保存しません。HDR・字幕・複数音声などは保持されない場合があります。キャンセル後も完了済みの動画は残ります。")
+                            .font(.caption).padding(16).frame(width: 300)
+                    }
+            }
+            if model.busy { ProgressView(value: model.progress) }
+            Text(model.status).font(.caption).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+            HStack {
+                Text("結果").font(.subheadline.bold())
+                Spacer()
+                if let folder = model.directory { Button("保存先を開く", systemImage: "folder") { NSWorkspace.shared.open(folder) } }
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    if model.results.isEmpty { Text("変換結果をここに表示します").font(.caption).foregroundStyle(.secondary) }
+                    ForEach(Array(model.results.enumerated()), id: \.offset) { _, result in
+                        Text(result).font(.caption).textSelection(.enabled)
+                    }
+                }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            }.frame(maxHeight: .infinity).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+            Text("MP4出力・元動画を保持").font(.caption2).foregroundStyle(.secondary)
+        }.padding(10).controlSize(.regular)
+            .background(ExpandableToolWindowSizing(expanded: expanded, compactSize: NSSize(width: 440, height: 540)))
+            .frame(minWidth: expanded ? 800 : 420, idealWidth: expanded ? 1100 : 440, minHeight: expanded ? 600 : 480, idealHeight: expanded ? 850 : 540)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(targeted ? Color.blue : .clear, lineWidth: 3))
             .dropDestination(for: URL.self) { urls, _ in
                 guard !model.busy, !urls.isEmpty, urls.allSatisfy(\.isFileURL) else { return false }
